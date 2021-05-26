@@ -6,6 +6,6 @@ CORS(app)
 @app.route("/",methods=["POST","GET"])
 @cross_origin(supports_credentials=True)
 def exp():
-	return jsonify({'h': 'helloWorld'})
+	return jsonify({'h': 'hoWorld'})
 
 	app.run(host='0.0.0.0', port=5000)
