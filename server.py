@@ -33,7 +33,7 @@ def res():
 	toread=io.BytesIO()
 	toread.write(d)
 	toread.seek(0)
-	data=pd.read_excel(toread,engine='openpyxl')
+	data=pd.read_excel(toread)
 	data=data.fillna("N/A")
 	col_names=data.iloc[0]
 	data=data[1:]
