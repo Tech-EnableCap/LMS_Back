@@ -240,7 +240,7 @@ def helper_upload(data,cursor,file_type="upload_file"):
 
 
 
-def master_repay_helper(data,method="single"):
+def master_repay_helper(data):
 	d_1=[]
 	d_all=[]
 	for i in range(len(data)):
@@ -251,7 +251,7 @@ def master_repay_helper(data,method="single"):
 	        #d=datetime.datetime.strptime(d,'%Y-%m-%d')
 	        for _ in range(int(data.iloc[i]['loan_tenure'])-1):
 	            d+=datetime.timedelta(7)
-	            d_1.append(str(d).split(" ")[0])
+	            d_1.append(d)
 	        d_all.append(d_1)
 	        d_1=[]
 	    else:
@@ -261,25 +261,22 @@ def master_repay_helper(data,method="single"):
 	        #d=datetime.datetime.strptime(d,'%Y-%m-%d')
 	        for _ in range(int(data.iloc[i]['loan_tenure'])-1):
 	            d+=relativedelta(months=+1)
-	            d_1.append(str(d).split(" ")[0])
+	            d_1.append(d)
 	        d_all.append(d_1)
 	        d_1=[]
 	df=pd.DataFrame({"emi_date":d_all})
 	df.index=range(1,len(df)+1)
 	lid=data['transactionid']
 	amt=data['emi_amt']
-	print(amt)
 	loan_type=data['repayment_type']
 	n_emi=data['loan_tenure']
 	data_master=pd.concat([lid,amt,loan_type,n_emi,amt,df],axis=1)
 	s=data_master.apply(lambda x: pd.Series(x['emi_date']),axis=1).stack().reset_index(level=1,drop=True)
 	s.name="emi_date"
 	data_master=data_master.drop('emi_date',axis=1).join(s)
-	if(method=="single"):
-		return data_master
-	else:
-		data_master2=data_master.groupby(['emi_date']).agg(lambda x:list(x)).reset_index()
-		return data_master,data_master2
+
+	return data_master
+
 
 
 ###### analysis part #####
