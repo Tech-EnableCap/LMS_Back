@@ -1,7 +1,16 @@
+'''
+collecton of helper modules for server.py
+@ tech@enablecap.in
+@ tech2@enablecap.in
+enablecap loan management system v1 2021
+
+'''
+
 import datetime
 import numpy_financial as np
 import numpy as npx
 import pandas as pd
+from dateutil.relativedelta import *
 
 def eq(param):
     if(param>=700):
@@ -202,3 +211,185 @@ def process_str(data):
 	data['final_approve_date']=data['final_approve_date'].apply(lambda x:str(x))
 	data['joining_date']=data['joining_date'].apply(lambda x:str(x))
 	return data
+
+
+def helper_upload(data,cursor,file_type="upload_file"):
+	dic={}
+	if(file_type=="upload_file"):
+		for length in range(len(data)):
+			for i,j in enumerate(data.columns):
+				dic[j]=data.iloc[length][i]
+			kk=list(dic.values())
+			cursor.execute('''INSERT INTO upload_file VALUES(%s,%s,%s,%s,%s
+				,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+				,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+				%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk))
+			dic={}
+			kk=[]
+	elif(file_type=="master_repay"):
+		for length in range(len(data)):
+			for i,j in enumerate(data.columns):
+				dic[j]=data.iloc[length][i]
+			kk=list(dic.values())
+			cursor.execute('''
+				INSERT INTO master_repay VALUES(%s,%s,%s,%s,%s)
+				''',(kk))
+			dic={}
+			kk=[]
+	return cursor
+
+
+
+def master_repay_helper(data,method="single"):
+	d_1=[]
+	d_all=[]
+	for i in range(len(data)):
+	    if(data.iloc[i]['repayment_type']=='Weekly'):
+	        d=data.iloc[i]['first_inst_date']
+	        d_1.append(d)
+	        #print(type(d))
+	        #d=datetime.datetime.strptime(d,'%Y-%m-%d')
+	        for _ in range(int(data.iloc[i]['loan_tenure'])-1):
+	            d+=datetime.timedelta(7)
+	            d_1.append(str(d).split(" ")[0])
+	        d_all.append(d_1)
+	        d_1=[]
+	    else:
+	        d=data.iloc[i]['first_inst_date']
+	        d_1.append(d)
+	        #print(type(d))
+	        #d=datetime.datetime.strptime(d,'%Y-%m-%d')
+	        for _ in range(int(data.iloc[i]['loan_tenure'])-1):
+	            d+=relativedelta(months=+1)
+	            d_1.append(str(d).split(" ")[0])
+	        d_all.append(d_1)
+	        d_1=[]
+	df=pd.DataFrame({"emi_date":d_all})
+	df.index=range(1,len(df)+1)
+	lid=data['transactionid']
+	amt=data['emi_amt']
+	print(amt)
+	loan_type=data['repayment_type']
+	n_emi=data['loan_tenure']
+	data_master=pd.concat([lid,amt,loan_type,n_emi,amt,df],axis=1)
+	s=data_master.apply(lambda x: pd.Series(x['emi_date']),axis=1).stack().reset_index(level=1,drop=True)
+	s.name="emi_date"
+	data_master=data_master.drop('emi_date',axis=1).join(s)
+	if(method=="single"):
+		return data_master
+	else:
+		data_master2=data_master.groupby(['emi_date']).agg(lambda x:list(x)).reset_index()
+		return data_master,data_master2
+
+
+###### analysis part #####
+
+def monthly_weekly_analysis(data,typ="Weekly"):
+	find_mw_analysis={}
+	if(typ=="Weekly" or typ=="Monthly"):
+	    d=data[data['repayment_type']==typ]
+	    total_number_of_loan=len(d['partner_loan_id'].unique())
+	    total_loan=sum(d['sanction_amount'].apply(lambda x:float(x)))
+	    avg_ticket_size=total_loan/total_number_of_loan
+	    avg_tenure_weeks=sum(d['loan_tenure'].apply(lambda x:
+	                                                          float(x)))/(len(d['loan_tenure']))
+	    avg_int_rate=sum(d['int_rate_reducing_perc'].apply(lambda x:
+	                                                       float(x)))/(len(d['int_rate_reducing_perc']))
+	    #df=pd.DataFrame(npx.array([total_number_of_loan,total_loan,
+	                        #avg_ticket_size,avg_tenure_weeks,avg_int_rate]).reshape(1,5),columns=[
+	    #'number_of_loans','total_loans','avg_ticket_size','avg_tenure','avg_interest_rate'
+	    #])
+	    #return df
+	    find_mw_analysis['number_of_loans']=total_number_of_loan
+	    find_mw_analysis['total_amounts_of_loans']=total_loan
+	    find_mw_analysis['avg_ticket_size']=avg_ticket_size
+	    if(typ=="Weekly"):
+	    	find_mw_analysis['avg_tenure_weeks']=avg_tenure_weeks
+	    else:
+	    	find_mw_analysis['avg_tenure_months']=avg_tenure_weeks
+	    find_mw_analysis['avg_interest_rate']=avg_int_rate
+
+	    return find_mw_analysis
+
+	else:
+	    print("invalid type")
+	    return
+
+
+def analysis_total(data):
+	find_total={}
+	total_loans=len(data)
+	total_amounts_of_loans=sum(data['sanction_amount'].apply(lambda x:float(x)))
+	avg_ticket_size=sum(data['sanction_amount'].apply(lambda x:float(x)))/len(data['partner_loan_id'].unique())
+	avg_tenure=(sum(data[data['repayment_type']=="Monthly"]['loan_tenure'].apply(lambda x:
+		float(x)))+(sum(data[data['repayment_type']=="Weekly"]['loan_tenure'].apply(lambda x:
+			float(x)))/4))/total_loans
+	avg_interest_rate=(sum(data[data['repayment_type']=="Monthly"]['int_rate_reducing_perc'].apply(lambda x:
+                                                           float(x)))+sum(data[data['repayment_type']=="Weekly"]['int_rate_reducing_perc'].apply(lambda x:
+                                                           float(x))))/len(data)
+	find_total['number_of_loans']=total_loans
+	find_total['total_amounts_of_loans']=total_amounts_of_loans
+	find_total['avg_ticket_size']=avg_ticket_size
+	find_total['avg_tenure_months']=avg_tenure
+	find_total['avg_interest_rate']=avg_interest_rate
+
+	return find_total
+
+
+
+def risk_params(data,typ="Number"):
+	data_out={}
+	if(typ=="Number" or typ=="Volume"):
+	    good=data[data['category']=="good"]
+	    risky=data[data['category']=="risky"]
+	    v_risky=data[data['category']=="very risky"]
+	    no_info=data[data['category']=="no info"]
+	    if(typ=="Number"):
+	        g=len(good)
+	        r=len(risky)
+	        v_r=len(v_risky)
+	        n_f=len(no_info)
+	        total=g+r+v_r+n_f
+	        #df=pd.DataFrame(npx.array([g,r,v_r,n_f,total]).reshape(1,5),columns=['Good',
+	                                                                             #'Risky',
+	                                                                            #'Very Risky',
+	                                                                            #'No Info',
+	                                                                            #'Total sample Size'])
+	        #return df
+
+	        data_out['good']=g
+	        data_out['risky']=r
+	        data_out['very_risky']=v_r
+	        data_out['no_info']=n_f
+	        data_out['total_sample_size']=total
+
+	        return data_out
+
+	    elif(typ=="Volume"):
+	        g=sum(good['loan_amount'].apply(lambda x:float(x)))
+	        r=sum(risky['loan_amount'].apply(lambda x:float(x)))
+	        v_r=sum(v_risky['loan_amount'].apply(lambda x:float(x)))
+	        n_f=sum(no_info['loan_amount'].apply(lambda x:float(x)))
+	        total=g+r+v_r+n_f
+	        #df=pd.DataFrame(npx.array([g,r,v_r,n_f,total]).reshape(1,5),columns=['Good',
+	                                                                             #'Risky',
+	                                                                            #'Very Risky',
+	                                                                            #'No Info',
+	                                                                            #'Total sample Size'])
+	        #return df
+
+	        data_out['good']=g
+	        data_out['risky']=r
+	        data_out['very_risky']=v_r
+	        data_out['no_info']=n_f
+	        data_out['total_sample_size']=total
+
+	        return data_out
+
+	else:
+	    print("invalid type")
+	    return
+
+
+
+
