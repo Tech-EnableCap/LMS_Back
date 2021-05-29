@@ -174,7 +174,7 @@ def exp():
 
 		body=[list(final_data.iloc[i].values) for i in range(len(final_data))]
 		cl_name=list(final_data.columns)
-		msg["clName"]=cl_name,
+		msg["clName"]=cl_name
 		msg["data"]=body
 		cursor.close()
 	except Exception as e:
@@ -234,7 +234,7 @@ def view_up():
 		final_data.index=range(1,len(final_data)+1)
 		body=[list(final_data.iloc[i].values) for i in range(len(final_data))]
 		cl_name=list(final_data.columns)
-		msg["clName"]=cl_name,
+		msg["clName"]=cl_name
 		msg["data"]=body
 		cursor.close()
 	except Exception as e:
