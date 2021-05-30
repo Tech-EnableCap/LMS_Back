@@ -387,20 +387,31 @@ def analysis():
 	msg={}
 	risk={}
 	req=request.data
-	req=json.loads(req)
-	st_date=req.get("stDate",None)
-	end_date=req.get("endDate",None)
-	typ=req.get("cat","loan_app_date")
-	if(st_date is not None and end_date is not None):
-		st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
-		en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
-		gap=en_d-st_d
-		if(gap.days<0):
-			msg["error"]="end date must be bigger"
-			return jsonify({"msg":msg})
-	#req=request.data
-	#req=json.loads(req)
-	#d_type=req.get("d_type","Weekly")
+	if(req):
+		req=json.loads(req)
+		st_date=req.get("stDate",None)
+		end_date=req.get("endDate",None)
+		typ=req.get("cat","loan_app_date")
+		if(st_date is not None and end_date is not None):
+			st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
+			en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
+			gap=en_d-st_d
+			if(gap.days<0):
+				msg["error"]="end date must be bigger"
+				return jsonify({"msg":msg})
+	else:
+		try:
+			cursor=mysql.connection.cursor()
+			query="SELECT disburse_date FROM upload_file ORDER BY disburse_date;"
+			cursor.execute(query,())
+			dates=cursor.fetchall()
+			end_date=str(dates[-1][0])
+			st_date=str(dates[-1][0]-relativedelta(months=+1))
+			typ="disburse_date"
+			cursor.close()
+		except Exception as e:
+			msg["error"]=str(e)
+			print(e)
 	try:
 		cursor=mysql.connection.cursor()
 		query="SELECT * FROM upload_file WHERE "+typ+" BETWEEN %s AND %s;"
