@@ -246,22 +246,18 @@ def master_repay_helper(data):
 	for i in range(len(data)):
 	    if(data.iloc[i]['repayment_type']=='Weekly'):
 	        d=data.iloc[i]['first_inst_date']
-	        d_1.append(d)
-	        #print(type(d))
-	        #d=datetime.datetime.strptime(d,'%Y-%m-%d')
+	        d_1.append(str(d).split(" ")[0])
 	        for _ in range(int(data.iloc[i]['loan_tenure'])-1):
 	            d+=datetime.timedelta(7)
-	            d_1.append(d)
+	            d_1.append(str(d).split(" ")[0])
 	        d_all.append(d_1)
 	        d_1=[]
 	    else:
 	        d=data.iloc[i]['first_inst_date']
-	        d_1.append(d)
-	        #print(type(d))
-	        #d=datetime.datetime.strptime(d,'%Y-%m-%d')
+	        d_1.append(str(d).split(" ")[0])
 	        for _ in range(int(data.iloc[i]['loan_tenure'])-1):
 	            d+=relativedelta(months=+1)
-	            d_1.append(d)
+	            d_1.append(str(d).split(" ")[0])
 	        d_all.append(d_1)
 	        d_1=[]
 	df=pd.DataFrame({"emi_date":d_all})
@@ -270,12 +266,13 @@ def master_repay_helper(data):
 	amt=data['emi_amt']
 	loan_type=data['repayment_type']
 	n_emi=data['loan_tenure']
-	data_master=pd.concat([lid,amt,loan_type,n_emi,amt,df],axis=1)
+	data_master=pd.concat([lid,loan_type,n_emi,amt,df],axis=1)
 	s=data_master.apply(lambda x: pd.Series(x['emi_date']),axis=1).stack().reset_index(level=1,drop=True)
 	s.name="emi_date"
-	data_master=data_master.drop('emi_date',axis=1).join(s)
+	#data_master1=data_master.drop('emi_date',axis=1).join(s)
+	#data_master2=data_master1.groupby('emi_date').agg(lambda x:list(x)).reset_index() #['transactionid'].apply(lambda x: [data_master2[data_master2['transactionid']==i]['emi_amt'].values  for i in x]).reset_index()
 
-	return data_master
+	return data_master#,data_master2.iloc[10]
 
 
 
@@ -302,10 +299,10 @@ def monthly_weekly_analysis(data,typ="Weekly"):
 	    find_mw_analysis['number_of_loans']=total_number_of_loan
 	    find_mw_analysis['total_amounts_of_loans']=total_loan
 	    find_mw_analysis['avg_ticket_size']=avg_ticket_size
-	    if(typ=="Weekly"):
-	    	find_mw_analysis['avg_tenure_weeks']=avg_tenure_weeks
-	    else:
-	    	find_mw_analysis['avg_tenure_months']=avg_tenure_weeks
+	    #if(typ=="Weekly"):
+	    	#find_mw_analysis['avg_tenure']=avg_tenure_weeks
+	    #else:
+	    find_mw_analysis['avg_tenure']=avg_tenure_weeks
 	    find_mw_analysis['avg_interest_rate']=avg_int_rate
 
 	    return find_mw_analysis
@@ -329,7 +326,7 @@ def analysis_total(data):
 	find_total['number_of_loans']=total_loans
 	find_total['total_amounts_of_loans']=total_amounts_of_loans
 	find_total['avg_ticket_size']=avg_ticket_size
-	find_total['avg_tenure_months']=avg_tenure
+	find_total['avg_tenure']=avg_tenure
 	find_total['avg_interest_rate']=avg_interest_rate
 
 	return find_total

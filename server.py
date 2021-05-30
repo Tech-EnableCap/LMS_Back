@@ -40,14 +40,18 @@ def res():
 		col_names=data.iloc[0]
 		data=data[1:]
 		data.columns=col_names
+		#d1,d2=master_repay_helper(data)
+		#print(d1)
+		#print("=================")
+		#print(d2)
 		try:
 			cursor=mysql.connection.cursor()
 
 			cursor=helper_upload(data=data,cursor=cursor,file_type="upload_file")
 
-			
-			master_repay=master_repay_helper(data)
-			cursor=helper_upload(data=master_repay,cursor=cursor,file_type="master_repay")
+			#####
+			#master_repay=master_repay_helper(data)
+			#cursor=helper_upload(data=master_repay,cursor=cursor,file_type="master_repay")
 
 
 			mysql.connection.commit()
