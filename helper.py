@@ -285,6 +285,8 @@ def monthly_weekly_analysis(data,typ="Weekly"):
 	find_mw_analysis={}
 	if(typ=="Weekly" or typ=="Monthly"):
 	    d=data[data['repayment_type']==typ]
+	    if(len(d)<1):
+	    	return "no data found on type "+typ
 	    total_number_of_loan=len(d['partner_loan_id'].unique())
 	    total_loan=sum(d['sanction_amount'].apply(lambda x:float(x)))
 	    avg_ticket_size=total_loan/total_number_of_loan

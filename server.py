@@ -382,14 +382,26 @@ def expt():
 def analysis():
 	msg={}
 	risk={}
+	req=request.data
+	req=json.loads(req)
+	st_date=req.get("stDate",None)
+	end_date=req.get("endDate",None)
+	typ=req.get("cat","loan_app_date")
+	if(st_date is not None and end_date is not None):
+		st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
+		en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
+		gap=en_d-st_d
+		if(gap.days<0):
+			msg["error"]="end date must be bigger"
+			return jsonify({"msg":msg})
 	#req=request.data
 	#req=json.loads(req)
 	#d_type=req.get("d_type","Weekly")
 	try:
 		cursor=mysql.connection.cursor()
-		query="SELECT * FROM upload_file;"
+		query="SELECT * FROM upload_file WHERE "+typ+" BETWEEN %s AND %s;"
 		cols_query="SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='upload_file';"
-		cursor.execute(query,())
+		cursor.execute(query,(st_date,end_date,))
 		data_all=cursor.fetchall()
 
 		query_eq="SELECT * FROM candidate_equifax;"
