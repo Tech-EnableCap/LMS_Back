@@ -354,7 +354,7 @@ def expt():
 			query="SELECT * FROM upload_file WHERE (transaction_id=%s OR first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s) ORDER BY "+typ+" LIMIT %s,%s;"
 		
 			cursor.execute(query,(lid,first_name,last_name,st_date,end_date,startat,perpage,))
-			
+
 		data_all=cursor.fetchall()
 		if(len(data_all)<1):
 			msg["error"]="no data found based on this search"
