@@ -58,9 +58,6 @@ def res():
 		try:
 			cursor=mysql.connection.cursor()
 
-			query="create table master_repay(transaction_id varchar(100) not null primary key,first_name varchar(100),last_name varchar(100),type varchar(100),no_of_emi varchar(100),emi_amt varchar(100),st_date date,end_date date);"
-
-			cursor.execute(query)
 			cursor=helper_upload(data=data,cursor=cursor,file_type="upload_file")
 
 			#####
