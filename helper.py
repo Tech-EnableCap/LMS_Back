@@ -487,9 +487,20 @@ def handle_date(data,date1,date2):
 				d_1.append(str(d).split(" ")[0])
 			d_all.append(d_1)
 			d_1=[]
+	data=data.drop(["end_date"],axis=1)
+	data=data.rename({'st_date':'1 payment'},axis=1)
 	df=pd.DataFrame(d_all)
 	df.index=range(1,len(df)+1)
+	#columns=[str(i)+"g" for i in range(2,len(d_all)+2)])
+	dic={}
+	for i in range(len(list(df.columns))):
+		dic[list(df.columns)[i]]=str(i+2)+" payment"
+		
+	df=df.rename(dic,axis=1)
+	#df.index=range(1,len(df)+1)
+	#df.columns=[str(i)+"g" for i in range(2,len(d_all)+2)]
 	df=df.fillna("Not in the range")
 	df=pd.concat([data,df],axis=1)
+
 	return df
 

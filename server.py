@@ -595,7 +595,7 @@ def search_repay_data():
 
 		cursor.close()
 	except Exception as e:
-		print(e)
+
 		msg["error"]=str(e)
 
 	return jsonify({"msg":msg})
