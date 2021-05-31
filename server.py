@@ -1,3 +1,11 @@
+'''
+REST API enablecap lms system
+@ tech@enablecap.in
+@ tech2@enablecap.in
+enablecap loan management system v1 2021
+
+'''
+
 from flask import Flask,request
 from flask_mysqldb import MySQL;
 import json
@@ -136,7 +144,7 @@ def exp():
 		gap=en_d-st_d
 		if(gap.days<0):
 			msg["error"]="end date must be bigger"
-			return jsonify({"error":msg})
+			return jsonify({"msg":msg})
 
 	try:
 		cursor=mysql.connection.cursor()
@@ -558,6 +566,12 @@ def find_test():
 	except Exception as e:
 		print(e)
 	return jsonify({"msg":"ok"})
+
+
+@app.route("/testq",methods=["POST"])
+@cross_origin(supports_credentials=True)
+def testq():
+	return jsonify({"msg":"hello world"})
 
 
 
