@@ -568,7 +568,7 @@ def find_test():
 	return jsonify({"msg":"ok"})
 
 
-@app.route("/testq",methods=["POST"])
+@app.route("/testq",methods=["GET"])
 @cross_origin(supports_credentials=True)
 def testq():
 	return jsonify({"msg":"hello world"})
