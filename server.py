@@ -19,12 +19,12 @@ from flask_cors import CORS, cross_origin
 app=Flask(__name__)
 CORS(app)
 
-#app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
-#app.config['MYSQL_USER']='tech'
-#app.config['MYSQL_PASSWORD']='tech_enablecap'
-app.config['MYSQL_HOST']='localhost'
-app.config['MYSQL_USER']='root'
-app.config['MYSQL_PASSWORD']=''
+app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
+app.config['MYSQL_USER']='tech'
+app.config['MYSQL_PASSWORD']='tech_enablecap'
+#app.config['MYSQL_HOST']='localhost'
+#app.config['MYSQL_USER']='root'
+#app.config['MYSQL_PASSWORD']=''
 app.config['MYSQL_DB']='lms'
 app.config['MYSQL_DATABASE_PORT']=3306
 
