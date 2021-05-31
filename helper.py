@@ -405,7 +405,6 @@ def handle_single_tid_data(data):
 	d_1=[]
 	d_all=[]
 	for i in range(len(data)):
-		print(i)
 		if(data.iloc[i]['type']=='Weekly'):
 			d=data.iloc[i]['st_date']
 			d_1.append(str(d).split(" ")[0])
@@ -446,8 +445,8 @@ def handle_single_tid_data(data):
 		return data_master
 
 	else:
-		print(d_all)
-		df=pd.DataFrame(d_all[0],columns=["emi_amt"])
+		#print(d_all)
+		df=pd.DataFrame(d_all[0],columns=["emi_date"])
 		df.index=range(1,len(df)+1)
 		lid=data['transaction_id']
 		first_name=data['first_name']
@@ -458,4 +457,39 @@ def handle_single_tid_data(data):
 		data_master=pd.concat([lid,first_name,last_name,loan_type,n_emi,amt,df],axis=1)
 		data_master=data_master.fillna(" ")
 		return data_master
+
+
+def handle_date(data,date1,date2):
+	d_1=[]
+	d_all=[]
+	for i in range(len(data)):
+		if(data.iloc[i]['type']=="Weekly"):
+			d=data.iloc[i]['st_date']
+			d=datetime.datetime.strptime(d,"%Y-%m-%d")
+			for _ in range(int(data.iloc[i]['no_of_emi'])-1):
+				#print(datetime.datetime.strptime(d,"%Y-%m-%d"))
+				d+=datetime.timedelta(7)
+				if(d>datetime.datetime.strptime(date2,"%Y-%m-%d")):
+					break
+				
+				d_1.append(str(d).split(" ")[0])
+			d_all.append(d_1)
+			d_1=[]
+		else:
+			d=data.iloc[i]['st_date']
+			d=datetime.datetime.strptime(d,"%Y-%m-%d")
+			for _ in range(int(data.iloc[i]['no_of_emi'])-1):
+				#print(datetime.datetime.strptime(d,"%Y-%m-%d"))
+				d+=relativedelta(months=+1)
+				if(d>datetime.datetime.strptime(date2,"%Y-%m-%d")):
+					break
+				
+				d_1.append(str(d).split(" ")[0])
+			d_all.append(d_1)
+			d_1=[]
+	df=pd.DataFrame(d_all)
+	df.index=range(1,len(df)+1)
+	df=df.fillna("Not in the range")
+	df=pd.concat([data,df],axis=1)
+	return df
 

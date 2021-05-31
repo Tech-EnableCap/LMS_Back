@@ -549,7 +549,10 @@ def search_repay_data():
 			data=pd.DataFrame(data_all,columns=cols)
 			data['st_date']=data['st_date'].apply(lambda x:str(x).split(" ")[0])
 			data['end_date']=data['end_date'].apply(lambda x:str(x).split(" ")[0])
+			
 			data.index=range(1,len(data)+1)
+
+			data=handle_date(data,st_date,end_date)
 
 			body=[list(data.iloc[i].values) for i in range(len(data))]
 			cl_name=list(data.columns)
@@ -582,7 +585,7 @@ def search_repay_data():
 				return jsonify({"msg":msg})
 			data=pd.DataFrame(data_all,columns=cols)
 			#print(data)
-			#data.index=range(1,len(data)+1)
+			data.index=range(1,len(data)+1)
 			m_r=handle_single_tid_data(data)
 			body=[list(m_r.iloc[i].values) for i in range(len(m_r))]
 			cl_name=list(m_r.columns)
