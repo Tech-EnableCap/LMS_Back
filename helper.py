@@ -220,10 +220,13 @@ def helper_upload(data,cursor,file_type="upload_file"):
 			for i,j in enumerate(data.columns):
 				dic[j]=data.iloc[length][i]
 			kk=list(dic.values())
-			cursor.execute('''INSERT INTO upload_file VALUES(%s,%s,%s,%s,%s
-				,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
-				,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
-				%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk))
+			check="SELECT * FROM upload_file WHERE transaction_id=%s";
+			cursor.execute(check,(kk[0],))
+			if(cursor.rowcount<1):
+				cursor.execute('''INSERT INTO upload_file VALUES(%s,%s,%s,%s,%s
+					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+					%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk))
 			dic={}
 			kk=[]
 	elif(file_type=="master_repay"):
@@ -231,9 +234,12 @@ def helper_upload(data,cursor,file_type="upload_file"):
 			for i,j in enumerate(data.columns):
 				dic[j]=data.iloc[length][i]
 			kk=list(dic.values())
-			cursor.execute('''
-				INSERT INTO master_repay VALUES(%s,%s,%s,%s,%s)
-				''',(kk))
+			check="SELECT * FROM master_repay WHERE transaction_id=%s";
+			cursor.execute(check,(kk[0],))
+			if(cursor.rowcount<1):
+				cursor.execute('''
+					INSERT INTO master_repay VALUES(%s,%s,%s,%s,%s,%s,%s,%s)
+					''',(kk))
 			dic={}
 			kk=[]
 	return cursor
@@ -250,7 +256,8 @@ def master_repay_helper(data):
 	        for _ in range(int(data.iloc[i]['loan_tenure'])-1):
 	            d+=datetime.timedelta(7)
 	            d_1.append(str(d).split(" ")[0])
-	        d_all.append(d_1)
+	        #d_all.append(d_1)
+	        d_all.append(d_1[::len(d_1)-1])
 	        d_1=[]
 	    else:
 	        d=data.iloc[i]['first_inst_date']
@@ -258,17 +265,25 @@ def master_repay_helper(data):
 	        for _ in range(int(data.iloc[i]['loan_tenure'])-1):
 	            d+=relativedelta(months=+1)
 	            d_1.append(str(d).split(" ")[0])
-	        d_all.append(d_1)
+	        #d_all.append(d_1)
+	        d_all.append(d_1[::len(d_1)-1])
 	        d_1=[]
-	df=pd.DataFrame({"emi_date":d_all})
+
+	#df=pd.DataFrame({"emi_date":d_all})
+	df=pd.DataFrame(d_all,columns=["st","end"])
 	df.index=range(1,len(df)+1)
 	lid=data['transactionid']
+	first_name=data['first_name']
+	last_name=data['last_name']
 	amt=data['emi_amt']
 	loan_type=data['repayment_type']
 	n_emi=data['loan_tenure']
-	data_master=pd.concat([lid,loan_type,n_emi,amt,df],axis=1)
-	s=data_master.apply(lambda x: pd.Series(x['emi_date']),axis=1).stack().reset_index(level=1,drop=True)
-	s.name="emi_date"
+	data_master=pd.concat([lid,first_name,last_name,loan_type,n_emi,amt,df],axis=1)
+	#data_master=data_master.fillna("N/A")
+	#s=data_master.apply(lambda x: pd.Series(x['emi_date']),axis=1).stack().reset_index(level=1,drop=True)
+	#s.name="emi_date"
+
+
 	#data_master1=data_master.drop('emi_date',axis=1).join(s)
 	#data_master2=data_master1.groupby('emi_date').agg(lambda x:list(x)).reset_index() #['transactionid'].apply(lambda x: [data_master2[data_master2['transactionid']==i]['emi_amt'].values  for i in x]).reset_index()
 

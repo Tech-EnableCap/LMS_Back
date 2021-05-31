@@ -19,9 +19,12 @@ from flask_cors import CORS, cross_origin
 app=Flask(__name__)
 CORS(app)
 
-app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
-app.config['MYSQL_USER']='tech'
-app.config['MYSQL_PASSWORD']='tech_enablecap'
+#app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
+#app.config['MYSQL_USER']='tech'
+#app.config['MYSQL_PASSWORD']='tech_enablecap'
+app.config['MYSQL_HOST']='localhost'
+app.config['MYSQL_USER']='root'
+app.config['MYSQL_PASSWORD']=''
 app.config['MYSQL_DB']='lms'
 app.config['MYSQL_DATABASE_PORT']=3306
 
@@ -48,7 +51,7 @@ def res():
 		col_names=data.iloc[0]
 		data=data[1:]
 		data.columns=col_names
-		#d1,d2=master_repay_helper(data)
+		#d1=master_repay_helper(data)
 		#print(d1)
 		#print("=================")
 		#print(d2)
@@ -58,8 +61,8 @@ def res():
 			cursor=helper_upload(data=data,cursor=cursor,file_type="upload_file")
 
 			#####
-			#master_repay=master_repay_helper(data)
-			#cursor=helper_upload(data=master_repay,cursor=cursor,file_type="master_repay")
+			master_repay=master_repay_helper(data)
+			cursor=helper_upload(data=master_repay,cursor=cursor,file_type="master_repay")
 
 
 			mysql.connection.commit()
@@ -488,15 +491,17 @@ def analysis():
 
 ####### master repay
 
-@app.route("/test",methods=["POST"])
+@app.route("/search_repay",methods=["POST"])
 @cross_origin(supports_credentials=True)
-def test_ms():
-
+def search_repay_data():
+	msg={}
 	req=request.data
+	pageidx=request.args.get("idx")
 	req=json.loads(req)
-	tid=req.get("tid",None)
+	lid=req.get("lid",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
+
 	if(st_date is not None and end_date is not None):
 		st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
 		en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
@@ -507,17 +512,50 @@ def test_ms():
 
 	try:
 		cursor=mysql.connection.cursor()
-		#query="SELECT DISTINCT transaction_id FROM master_repay WHERE emi_date BETWEEN %s AND %s;"
-		query="SELECT * FROM master_repay WHERE transaction_id=%s;"
-		cursor.execute(query,(tid,))
-		data_all=cursor.fetchall()
-		cursor.close()
-		print(data_all)
+		cols_query="SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='master_repay';"
+		cursor.execute(cols_query,())
+		columns=cursor.fetchall()
+		cols=[i[0] for i in columns]
 
+		if(pageidx=="0"):
+			query="SELECT COUNT(*) FROM master_repay WHERE (transaction_id=%s OR %s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date);"
+			cursor.execute(query,(lid,st_date,end_date,end_date,st_date,st_date,end_date,))
+			count=cursor.fetchall()
+			msg["count"]=count[0][0]
+
+		if(pageidx=="-2"):
+			query="SELECT * FROM master_repay WHERE (transaction_id=%s OR %s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date);"
+			cursor.execute(query,(lid,st_date,end_date,end_date,st_date,st_date,end_date,))
+
+		else:	
+			perpage=20
+			startat=int(pageidx)*perpage
+			#query="SELECT DISTINCT transaction_id FROM master_repay WHERE emi_date BETWEEN %s AND %s;"
+			query="SELECT * FROM master_repay WHERE (transaction_id=%s OR %s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date) LIMIT %s,%s;"
+			cursor.execute(query,(lid,st_date,end_date,end_date,st_date,st_date,end_date,startat,perpage,))
+		
+		data_all=cursor.fetchall()
+
+		if(len(data_all)<1):
+			msg["error"]="no data found based on this search"
+			return jsonify({"msg":msg})
+
+		data=pd.DataFrame(data_all,columns=cols)
+		data['st_date']=data['st_date'].apply(lambda x:str(x).split(" ")[0])
+		data['end_date']=data['end_date'].apply(lambda x:str(x).split(" ")[0])
+		data.index=range(1,len(data)+1)
+
+		body=[list(data.iloc[i].values) for i in range(len(data))]
+		cl_name=list(data.columns)
+		msg["clName"]=cl_name
+		msg["data"]=body
+
+		cursor.close()
 	except Exception as e:
 		print(e)
+		msg["error"]=str(e)
 
-	return jsonify({"msg":"ok"})
+	return jsonify({"msg":msg})
 
 
 	#test=pd.DataFrame([['a',['2021-05-05','2021-05-12','2021-05-19']],
@@ -543,10 +581,10 @@ def test_ms():
 		#msg=str(e)
 		#print("database error")
 		#print(msg)
-	master_repay=master_repay_helper(d)
-	print(master_repay)
+	#master_repay=master_repay_helper(d)
+	#print(master_repay)
 
-	return jsonify({"msg":msg})
+	#return jsonify({"msg":msg})
 
 
 @app.route("/findtest",methods=["POST"])
