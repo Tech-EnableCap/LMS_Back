@@ -502,6 +502,8 @@ def search_repay_data():
 	pageidx=request.args.get("idx")
 	req=json.loads(req)
 	lid=req.get("lid",None)
+	f_name=req.get("fname",None)
+	l_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
 
@@ -555,7 +557,6 @@ def search_repay_data():
 			msg["data"]=body
 
 			
-
 		if(lid):
 			query="SELECT * FROM master_repay WHERE transaction_id=%s"
 			cursor.execute(query,(lid,))
@@ -570,6 +571,25 @@ def search_repay_data():
 			cl_name=list(m_r.columns)
 			msg["clName"]=cl_name
 			msg["data"]=body
+			msg["count"]=1
+
+		if(f_name and l_name):
+			query="SELECT * FROM master_repay WHERE (first_name=%s AND last_name=%s)"
+			cursor.execute(query,(f_name,l_name))
+			data_all=cursor.fetchall()
+			if(len(data_all)<1):
+				msg["error"]="no data found based on this search"
+				return jsonify({"msg":msg})
+			data=pd.DataFrame(data_all,columns=cols)
+			#print(data)
+			#data.index=range(1,len(data)+1)
+			m_r=handle_single_tid_data(data)
+			body=[list(m_r.iloc[i].values) for i in range(len(m_r))]
+			cl_name=list(m_r.columns)
+			msg["clName"]=cl_name
+			msg["data"]=body
+			msg["count"]=1
+
 		cursor.close()
 	except Exception as e:
 		print(e)

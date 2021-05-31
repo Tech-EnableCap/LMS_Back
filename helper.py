@@ -403,29 +403,59 @@ def risk_params(data,typ="Number"):
 
 def handle_single_tid_data(data):
 	d_1=[]
-	if(data.iloc[0]['type']=='Weekly'):
-		d=data.iloc[0]['st_date']
-		d_1.append(str(d).split(" ")[0])
-		for _ in range(int(data.iloc[0]['no_of_emi'])-1):
-			d+=datetime.timedelta(7)
+	d_all=[]
+	for i in range(len(data)):
+		print(i)
+		if(data.iloc[i]['type']=='Weekly'):
+			d=data.iloc[i]['st_date']
 			d_1.append(str(d).split(" ")[0])
+			for _ in range(int(data.iloc[i]['no_of_emi'])-1):
+				d+=datetime.timedelta(7)
+				d_1.append(str(d).split(" ")[0])
+			d_all.append(d_1)
+			d_1=[]
+		else:
+			d=data.iloc[i]['st_date']
+			d_1.append(str(d).split(" ")[0])
+			for _ in range(int(data.iloc[i]['no_of_emi'])-1):
+				d+=relativedelta(months=+1)
+				d_1.append(str(d).split(" ")[0])
+			d_all.append(d_1)
+			d_1=[]
+
+	if(len(d_all)>1):
+		dfs=[]
+		for i in range(len(d_all)):
+			emi_amt=pd.DataFrame(d_all[i],columns=["emi_amt"])
+			lid=data.iloc[i]['transaction_id']
+			first_name=data.iloc[i]['first_name']
+			last_name=data.iloc[i]['last_name']
+			amt=data.iloc[i]['emi_amt']
+			loan_type=data.iloc[i]['type']
+			n_emi=data.iloc[i]['no_of_emi']
+			one=pd.DataFrame(npx.array([lid,first_name,last_name,amt,loan_type,n_emi]).reshape(1,6),columns=["transaction_id",
+				"first_name","last_name","emi_amt","type","no_of_emi"])
+			total=pd.concat([one,emi_amt],axis=1)
+			#print(df)
+			dfs.append(total)
+
+		df=pd.concat(dfs,axis=0)
+		df.reset_index(inplace=True,drop=True)
+		
+		data_master=df.fillna(" ")
+		return data_master
+
 	else:
-		d=data.iloc[0]['st_date']
-		d_1.append(str(d).split(" ")[0])
-		for _ in range(int(data.iloc[0]['no_of_emi'])-1):
-			d+=relativedelta(months=+1)
-			d_1.append(str(d).split(" ")[0])
-
-	df=pd.DataFrame({"emi_date":d_1})
-	df.index=range(1,len(df)+1)
-	lid=data['transaction_id']
-	first_name=data['first_name']
-	last_name=data['last_name']
-	amt=data['emi_amt']
-	loan_type=data['type']
-	n_emi=data['no_of_emi']
-	data_master=pd.concat([lid,first_name,last_name,loan_type,n_emi,amt,df],axis=1)
-	data_master=data_master.fillna(" ")
-
-	return data_master
+		print(d_all)
+		df=pd.DataFrame(d_all[0],columns=["emi_amt"])
+		df.index=range(1,len(df)+1)
+		lid=data['transaction_id']
+		first_name=data['first_name']
+		last_name=data['last_name']
+		amt=data['emi_amt']
+		loan_type=data['type']
+		n_emi=data['no_of_emi']
+		data_master=pd.concat([lid,first_name,last_name,loan_type,n_emi,amt,df],axis=1)
+		data_master=data_master.fillna(" ")
+		return data_master
 
