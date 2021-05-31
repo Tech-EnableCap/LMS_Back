@@ -519,40 +519,57 @@ def search_repay_data():
 		cursor.execute(cols_query,())
 		columns=cursor.fetchall()
 		cols=[i[0] for i in columns]
+		if(st_date and end_date):
 
-		if(pageidx=="0"):
-			query="SELECT COUNT(*) FROM master_repay WHERE (transaction_id=%s OR %s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date);"
-			cursor.execute(query,(lid,st_date,end_date,end_date,st_date,st_date,end_date,))
-			count=cursor.fetchall()
-			msg["count"]=count[0][0]
+			if(pageidx=="0"):
+				query="SELECT COUNT(*) FROM master_repay WHERE (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date);"
+				cursor.execute(query,(st_date,end_date,end_date,st_date,st_date,end_date,))
+				count=cursor.fetchall()
+				msg["count"]=count[0][0]
 
-		if(pageidx=="-2"):
-			query="SELECT * FROM master_repay WHERE (transaction_id=%s OR %s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date);"
-			cursor.execute(query,(lid,st_date,end_date,end_date,st_date,st_date,end_date,))
+			if(pageidx=="-2"):
+				query="SELECT * FROM master_repay WHERE (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date);"
+				cursor.execute(query,(st_date,end_date,end_date,st_date,st_date,end_date,))
 
-		else:	
-			perpage=20
-			startat=int(pageidx)*perpage
-			#query="SELECT DISTINCT transaction_id FROM master_repay WHERE emi_date BETWEEN %s AND %s;"
-			query="SELECT * FROM master_repay WHERE (transaction_id=%s OR %s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date) LIMIT %s,%s;"
-			cursor.execute(query,(lid,st_date,end_date,end_date,st_date,st_date,end_date,startat,perpage,))
-		
-		data_all=cursor.fetchall()
+			else:	
+				perpage=20
+				startat=int(pageidx)*perpage
+				#query="SELECT DISTINCT transaction_id FROM master_repay WHERE emi_date BETWEEN %s AND %s;"
+				query="SELECT * FROM master_repay WHERE (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date) LIMIT %s,%s;"
+				cursor.execute(query,(st_date,end_date,end_date,st_date,st_date,end_date,startat,perpage,))
+			
+			data_all=cursor.fetchall()
 
-		if(len(data_all)<1):
-			msg["error"]="no data found based on this search"
-			return jsonify({"msg":msg})
+			if(len(data_all)<1):
+				msg["error"]="no data found based on this search"
+				return jsonify({"msg":msg})
 
-		data=pd.DataFrame(data_all,columns=cols)
-		data['st_date']=data['st_date'].apply(lambda x:str(x).split(" ")[0])
-		data['end_date']=data['end_date'].apply(lambda x:str(x).split(" ")[0])
-		data.index=range(1,len(data)+1)
+			data=pd.DataFrame(data_all,columns=cols)
+			data['st_date']=data['st_date'].apply(lambda x:str(x).split(" ")[0])
+			data['end_date']=data['end_date'].apply(lambda x:str(x).split(" ")[0])
+			data.index=range(1,len(data)+1)
 
-		body=[list(data.iloc[i].values) for i in range(len(data))]
-		cl_name=list(data.columns)
-		msg["clName"]=cl_name
-		msg["data"]=body
+			body=[list(data.iloc[i].values) for i in range(len(data))]
+			cl_name=list(data.columns)
+			msg["clName"]=cl_name
+			msg["data"]=body
 
+			
+
+		if(lid):
+			query="SELECT * FROM master_repay WHERE transaction_id=%s"
+			cursor.execute(query,(lid,))
+			data_all=cursor.fetchall()
+			if(len(data_all)<1):
+				msg["error"]="no data found based on this search"
+				return jsonify({"msg":msg})
+			data=pd.DataFrame(data_all,columns=cols)
+			data.index=range(1,len(data)+1)
+			m_r=handle_single_tid_data(data)
+			body=[list(m_r.iloc[i].values) for i in range(len(m_r))]
+			cl_name=list(m_r.columns)
+			msg["clName"]=cl_name
+			msg["data"]=body
 		cursor.close()
 	except Exception as e:
 		print(e)
