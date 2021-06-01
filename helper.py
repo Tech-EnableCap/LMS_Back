@@ -256,7 +256,6 @@ def master_repay_helper(data):
 	        for _ in range(int(data.iloc[i]['loan_tenure'])-1):
 	            d+=datetime.timedelta(7)
 	            d_1.append(str(d).split(" ")[0])
-	        #d_all.append(d_1)
 	        d_all.append(d_1[::len(d_1)-1])
 	        d_1=[]
 	    else:
@@ -265,7 +264,6 @@ def master_repay_helper(data):
 	        for _ in range(int(data.iloc[i]['loan_tenure'])-1):
 	            d+=relativedelta(months=+1)
 	            d_1.append(str(d).split(" ")[0])
-	        #d_all.append(d_1)
 	        d_all.append(d_1[::len(d_1)-1])
 	        d_1=[]
 
@@ -425,7 +423,7 @@ def handle_single_tid_data(data):
 	if(len(d_all)>1):
 		dfs=[]
 		for i in range(len(d_all)):
-			emi_amt=pd.DataFrame(d_all[i],columns=["emi_amt"])
+			emi_date=pd.DataFrame(d_all[i],columns=["emi_date"])
 			lid=data.iloc[i]['transaction_id']
 			first_name=data.iloc[i]['first_name']
 			last_name=data.iloc[i]['last_name']
@@ -434,7 +432,7 @@ def handle_single_tid_data(data):
 			n_emi=data.iloc[i]['no_of_emi']
 			one=pd.DataFrame(npx.array([lid,first_name,last_name,amt,loan_type,n_emi]).reshape(1,6),columns=["transaction_id",
 				"first_name","last_name","emi_amt","type","no_of_emi"])
-			total=pd.concat([one,emi_amt],axis=1)
+			total=pd.concat([one,emi_date],axis=1)
 			#print(df)
 			dfs.append(total)
 
@@ -442,7 +440,7 @@ def handle_single_tid_data(data):
 		df.reset_index(inplace=True,drop=True)
 		
 		data_master=df.fillna(" ")
-		return data_master
+		return data_master,len(d_all)
 
 	else:
 		#print(d_all)
@@ -495,7 +493,7 @@ def handle_date(data,date1,date2):
 	dic={}
 	for i in range(len(list(df.columns))):
 		dic[list(df.columns)[i]]=str(i+2)+" payment"
-		
+
 	df=df.rename(dic,axis=1)
 	#df.index=range(1,len(df)+1)
 	#df.columns=[str(i)+"g" for i in range(2,len(d_all)+2)]

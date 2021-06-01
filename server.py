@@ -566,12 +566,12 @@ def search_repay_data():
 				return jsonify({"msg":msg})
 			data=pd.DataFrame(data_all,columns=cols)
 			data.index=range(1,len(data)+1)
-			m_r=handle_single_tid_data(data)
+			m_r,count=handle_single_tid_data(data)
 			body=[list(m_r.iloc[i].values) for i in range(len(m_r))]
 			cl_name=list(m_r.columns)
 			msg["clName"]=cl_name
 			msg["data"]=body
-			msg["count"]=1
+			msg["count"]=count
 
 		if(f_name and l_name):
 			query="SELECT * FROM master_repay WHERE (first_name=%s AND last_name=%s)"
@@ -583,12 +583,12 @@ def search_repay_data():
 			data=pd.DataFrame(data_all,columns=cols)
 			#print(data)
 			data.index=range(1,len(data)+1)
-			m_r=handle_single_tid_data(data)
+			m_r,count=handle_single_tid_data(data)
 			body=[list(m_r.iloc[i].values) for i in range(len(m_r))]
 			cl_name=list(m_r.columns)
 			msg["clName"]=cl_name
 			msg["data"]=body
-			msg["count"]=1
+			msg["count"]=count
 
 		cursor.close()
 	except Exception as e:
