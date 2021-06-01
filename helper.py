@@ -207,7 +207,7 @@ def handle_bank_upload_date_structure(date):
 
 
 def process_str(data):
-	data['dob']=data['dob'].apply(lambda x:str(x))
+	data['dob']=data['dob'].apply(lambda x:str(x).split(" ")[0])
 	data['sacntion_date']=data['sacntion_date'].apply(lambda x:str(x))
 	data['loan_app_date']=data['loan_app_date'].apply(lambda x:str(x))
 	data['first_inst_date']=data['first_inst_date'].apply(lambda x:str(x))
