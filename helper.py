@@ -186,6 +186,10 @@ def bank_upload_process(data):
 	bene_acc_num=data['borro_bank_acc_num']
 	bene_ifsc=data['borro_bank_ifsc']
 	pymt_mode=bene_ifsc.apply(lambda x:ifsc(x))
+	bene_ifsc=pd.DataFrame(bene_ifsc.values,columns=['bene_ifsc'])
+	pymt_mode=pd.DataFrame(pymt_mode.values,columns=['pymt_mode'])
+	bene_ifsc.index=range(1,len(bene_ifsc)+1)
+	pymt_mode.index=range(1,len(pymt_mode)+1)
 	amt=data['net_disbur_amt']
 	debit_narr=data['appl_pan']
 	credit=pd.DataFrame(['loan from enablecap']*len(data),columns=['credit'])
@@ -198,6 +202,8 @@ def bank_upload_process(data):
 	pymt_date=data['disburse_date'].apply(lambda x:handle_bank_upload_date_structure(x))
 	bank_up_f=pd.concat([t_id,partner_l_id,pymt_prod_type_code,pymt_mode,debt_acc_num,bnf_name,
              bene_acc_num,bene_ifsc,amt,debit_narr,credit,mob,email,remark,pymt_date],axis=1)
+	bank_up_f=bank_up_f.rename({'borro_bank_acc_num':'bene_acc_no','net_disbur_amt':'amount','appl_pan':'debit_narr',
+		'credit':'credit_narr','appl_phone':'mobile_num','disburse_date':'pymt_date','debt_acc_num':'debit_acc_no','email':'email_id'},axis=1)
 	final_data=bank_up_f.fillna("N/A")
 	return final_data
 
