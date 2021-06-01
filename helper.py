@@ -195,11 +195,15 @@ def bank_upload_process(data):
 	email.index=range(1,len(t_id)+1)
 	remark=bnf_name.copy()
 	remark.columns=['remark']
-	pymt_date=data['disburse_date'].apply(lambda x:str(x))
+	pymt_date=data['disburse_date'].apply(lambda x:handle_bank_upload_date_structure(x))
 	bank_up_f=pd.concat([t_id,partner_l_id,pymt_prod_type_code,pymt_mode,debt_acc_num,bnf_name,
              bene_acc_num,bene_ifsc,amt,debit_narr,credit,mob,email,remark,pymt_date],axis=1)
 	final_data=bank_up_f.fillna("N/A")
 	return final_data
+
+
+def handle_bank_upload_date_structure(date):
+	return datetime.datetime.strftime(date,"%d-%m-%Y")
 
 
 def process_str(data):
@@ -247,25 +251,29 @@ def helper_upload(data,cursor,file_type="upload_file"):
 
 
 def master_repay_helper(data):
-	d_1=[]
+	#d_1=[]
 	d_all=[]
 	for i in range(len(data)):
 	    if(data.iloc[i]['repayment_type']=='Weekly'):
-	        d=data.iloc[i]['first_inst_date']
-	        d_1.append(str(d).split(" ")[0])
-	        for _ in range(int(data.iloc[i]['loan_tenure'])-1):
-	            d+=datetime.timedelta(7)
-	            d_1.append(str(d).split(" ")[0])
-	        d_all.append(d_1[::len(d_1)-1])
-	        d_1=[]
+	        d1=data.iloc[i]['first_inst_date']
+	        #d_1.append(str(d).split(" ")[0])
+	        #for _ in range(int(data.iloc[i]['loan_tenure'])-1):
+	            #d+=datetime.timedelta(7)
+	            #d_1.append(str(d).split(" ")[0])
+	        #d_all.append(d_1[::len(d_1)-1])
+	        d2=d1+datetime.timedelta(7*(int(data.iloc[i]['loan_tenure'])-1))
+	        d_all.append([str(d1).split(" ")[0],str(d2).split(" ")[0]])
+	        #d_1=[]
 	    else:
-	        d=data.iloc[i]['first_inst_date']
-	        d_1.append(str(d).split(" ")[0])
-	        for _ in range(int(data.iloc[i]['loan_tenure'])-1):
-	            d+=relativedelta(months=+1)
-	            d_1.append(str(d).split(" ")[0])
-	        d_all.append(d_1[::len(d_1)-1])
-	        d_1=[]
+	        d1=data.iloc[i]['first_inst_date']
+	        #d_1.append(str(d).split(" ")[0])
+	        #for _ in range(int(data.iloc[i]['loan_tenure'])-1):
+	            #d+=relativedelta(months=+1)
+	            #d_1.append(str(d).split(" ")[0])
+	        d2=d1+relativedelta(months=+(int(data.iloc[i]['loan_tenure'])-1))
+	        d_all.append([str(d1).split(" ")[0],str(d2).split(" ")[0]])
+	        #d_all.append(d_1[::len(d_1)-1])
+	        #d_1=[]
 
 	#df=pd.DataFrame({"emi_date":d_all})
 	df=pd.DataFrame(d_all,columns=["st","end"])
@@ -284,7 +292,7 @@ def master_repay_helper(data):
 
 	#data_master1=data_master.drop('emi_date',axis=1).join(s)
 	#data_master2=data_master1.groupby('emi_date').agg(lambda x:list(x)).reset_index() #['transactionid'].apply(lambda x: [data_master2[data_master2['transactionid']==i]['emi_amt'].values  for i in x]).reset_index()
-
+	
 	return data_master#,data_master2.iloc[10]
 
 
@@ -454,7 +462,7 @@ def handle_single_tid_data(data):
 		n_emi=data['no_of_emi']
 		data_master=pd.concat([lid,first_name,last_name,loan_type,n_emi,amt,df],axis=1)
 		data_master=data_master.fillna(" ")
-		return data_master
+		return data_master,len(d_all)
 
 
 def handle_date(data,date1,date2):
@@ -486,13 +494,13 @@ def handle_date(data,date1,date2):
 			d_all.append(d_1)
 			d_1=[]
 	data=data.drop(["end_date"],axis=1)
-	data=data.rename({'st_date':'1 payment'},axis=1)
+	data=data.rename({'st_date':'payment_date'},axis=1)
 	df=pd.DataFrame(d_all)
 	df.index=range(1,len(df)+1)
 	#columns=[str(i)+"g" for i in range(2,len(d_all)+2)])
 	dic={}
 	for i in range(len(list(df.columns))):
-		dic[list(df.columns)[i]]=str(i+2)+" payment"
+		dic[list(df.columns)[i]]="payment_date"
 
 	df=df.rename(dic,axis=1)
 	#df.index=range(1,len(df)+1)
