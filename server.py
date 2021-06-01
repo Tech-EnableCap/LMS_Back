@@ -19,12 +19,12 @@ from flask_cors import CORS, cross_origin
 app=Flask(__name__)
 CORS(app)
 
-#app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
-#app.config['MYSQL_USER']='tech'
-#app.config['MYSQL_PASSWORD']='tech_enablecap'
-app.config['MYSQL_HOST']='localhost'
-app.config['MYSQL_USER']='root'
-app.config['MYSQL_PASSWORD']=''
+app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
+app.config['MYSQL_USER']='tech'
+app.config['MYSQL_PASSWORD']='tech_enablecap'
+#app.config['MYSQL_HOST']='localhost'
+#app.config['MYSQL_USER']='root'
+#app.config['MYSQL_PASSWORD']=''
 app.config['MYSQL_DB']='lms'
 app.config['MYSQL_DATABASE_PORT']=3306
 
@@ -136,6 +136,8 @@ def exp():
 	req=json.loads(req)
 	#pageidx=req.get("idx","0")
 	lid=req.get("lid",None)
+	if(lid):
+		lid=lid.split(" ")
 	first_name=req.get("fname",None)
 	last_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
@@ -157,23 +159,38 @@ def exp():
 		cols=[i[0] for i in columns]
 		cols=cols+['eq_score','risk_cat']
 		if(pageidx=="0"):
-			query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.partner_loan_id=%s OR upload_file.first_name=%s AND upload_file.last_name=%s OR upload_file."+typ+" BETWEEN %s AND %s);"
-			cursor.execute(query,(lid,first_name,last_name,st_date,end_date,))
-			count=cursor.fetchall()
+			if(lid):
+				cursor.execute("SELECT partner_loan_id FROM upload_file WHERE transaction_id IN %(tid)s",{"tid":lid})
+				partner_lids=cursor.fetchall()
+				cursor.execute("SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE upload_file.partner_loan_id IN %(tid)s",{"tid":partner_lids})
+				count=cursor.fetchall()
+			else:
+				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.first_name=%s AND upload_file.last_name=%s OR upload_file."+typ+" BETWEEN %s AND %s);"
+				cursor.execute(query,(first_name,last_name,st_date,end_date,))
+				count=cursor.fetchall()
 			msg["count"]=len(count)
 
 		if(pageidx=="-2"):
-			query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.partner_loan_id=%s OR upload_file.first_name=%s AND upload_file.last_name=%s OR upload_file."+typ+" BETWEEN %s AND %s);"
-			cursor.execute(query,(lid,first_name,last_name,st_date,end_date,))
+			if(lid):
+				cursor.execute("SELECT partner_loan_id FROM upload_file WHERE transaction_id IN %(tid)s",{"tid":lid})
+				partner_lids=cursor.fetchall()
+				cursor.execute("SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE upload_file.partner_loan_id IN %(tid)s",{"tid":partner_lids})
+			else:
+				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.first_name=%s AND upload_file.last_name=%s OR upload_file."+typ+" BETWEEN %s AND %s);"
+				cursor.execute(query,(first_name,last_name,st_date,end_date,))
 
 		else:
 			perpage=20
 			startat=int(pageidx)*perpage
-			cursor=mysql.connection.cursor()
-			#query="SELECT a1.* a2.equifax_score,a2.category FROM upload_file a1 candidate_equifax a2 WHERE a1.partner_loan_id=a2.partner_loan_id"
-			query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.partner_loan_id=%s OR upload_file.first_name=%s AND upload_file.last_name=%s OR upload_file."+typ+" BETWEEN %s AND %s) ORDER BY upload_file."+typ+" LIMIT %s,%s;"
+			if(lid):
+				cursor.execute("SELECT partner_loan_id FROM upload_file WHERE transaction_id IN %(tid)s",{"tid":lid})
+				partner_lids=cursor.fetchall()
+				cursor.execute("SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE upload_file.partner_loan_id IN %(tid)s LIMIT %(st)s,%(end)s",{'tid':partner_lids,'st':startat,'end':perpage})
+			else:
+				#query="SELECT a1.* a2.equifax_score,a2.category FROM upload_file a1 candidate_equifax a2 WHERE a1.partner_loan_id=a2.partner_loan_id"
+				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.first_name=%s AND upload_file.last_name=%s OR upload_file."+typ+" BETWEEN %s AND %s) ORDER BY upload_file."+typ+" LIMIT %s,%s;"
 			
-			cursor.execute(query,(lid,first_name,last_name,st_date,end_date,startat,perpage,))
+				cursor.execute(query,(first_name,last_name,st_date,end_date,startat,perpage,))
 
 		data_all=cursor.fetchall()
 		if(len(data_all)<1):
@@ -210,6 +227,8 @@ def view_up():
 	print(pageidx)
 	#pageidx=req.get("idx","0")
 	lid=req.get("lid",None)
+	if(lid):
+		lid=lid.split(" ")
 	first_name=req.get("fname",None)
 	last_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
@@ -232,22 +251,31 @@ def view_up():
 		cols=[i[0] for i in columns]
 
 		if(pageidx=="0"):
-			query="SELECT COUNT(*) FROM upload_file WHERE (transaction_id=%s OR first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s);"
-			cursor.execute(query,(lid,first_name,last_name,st_date,end_date,))
-			count=cursor.fetchall()
+			if(lid):
+				cursor.execute("SELECT COUNT(*) FROM upload_file WHERE transaction_id IN %(tid)s",{"tid":lid})
+				count=cursor.fetchall()
+			else:
+				query="SELECT COUNT(*) FROM upload_file WHERE (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s);"
+				cursor.execute(query,(first_name,last_name,st_date,end_date,))
+				count=cursor.fetchall()
 			msg["count"]=count[0][0]
 
 		if(pageidx=="-2"):
-			query="SELECT * FROM upload_file WHERE (transaction_id=%s OR first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s);"
-			cursor.execute(query,(lid,first_name,last_name,st_date,end_date,))
+			if(lid):
+				cursor.execute("SELECT * FROM upload_file WHERE transaction_id IN %(tid)s",{"tid":lid})
+			else:
+				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s);"
+				cursor.execute(query,(first_name,last_name,st_date,end_date,))
 
 		else:
 
 			perpage=20
 			startat=int(pageidx)*perpage
-			cursor=mysql.connection.cursor()
-			query="SELECT * FROM upload_file WHERE (transaction_id=%s OR first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s) ORDER BY "+typ+" LIMIT %s,%s;"
-			cursor.execute(query,(lid,first_name,last_name,st_date,end_date,startat,perpage,))
+			if(lid):
+				cursor.execute("SELECT * FROM upload_file WHERE transaction_id IN %(tid)s LIMIT %(st)s,%(end)s;",{"tid":lid,"st":startat,"end":perpage})
+			else:
+				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s) ORDER BY "+typ+" LIMIT %s,%s;"
+				cursor.execute(query,(first_name,last_name,st_date,end_date,startat,perpage,))
 
 		data_all=cursor.fetchall()
 		if(len(data_all)<1):
@@ -333,6 +361,8 @@ def expt():
 	req=json.loads(req)
 	#pageidx=req.get("idx","0")
 	lid=req.get("lid",None)
+	if(lid):
+		lid=lid.split(" ")
 	first_name=req.get("fname",None)
 	last_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
@@ -353,22 +383,32 @@ def expt():
 		cols=[i[0] for i in columns]
 
 		if(pageidx=="0"):
-			query="SELECT COUNT(*) FROM upload_file WHERE (transaction_id=%s OR first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s);"
-			cursor.execute(query,(lid,first_name,last_name,st_date,end_date,))
-			count=cursor.fetchall()
+			if(lid):
+				cursor.execute("SELECT COUNT(*) FROM upload_file WHERE transaction_id IN %(tid)s",{"tid":lid})
+				count=cursor.fetchall()
+			else:
+				query="SELECT COUNT(*) FROM upload_file WHERE (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s);"
+				cursor.execute(query,(first_name,last_name,st_date,end_date,))
+				count=cursor.fetchall()
 			msg["count"]=count[0][0]
 
 		if(pageidx=="-2"):
-			query="SELECT * FROM upload_file WHERE (transaction_id=%s OR first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s);"
-			cursor.execute(query,(lid,first_name,last_name,st_date,end_date,))
+			if(lid):
+				cursor.execute("SELECT * FROM upload_file WHERE transaction_id IN %(tid)s",{"tid":lid})
+			else:
+				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s);"
+				cursor.execute(query,(first_name,last_name,st_date,end_date,))
 
 		else:
 
 			perpage=20
 			startat=int(pageidx)*perpage
-			query="SELECT * FROM upload_file WHERE (transaction_id=%s OR first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s) ORDER BY "+typ+" LIMIT %s,%s;"
+			if(lid):
+				cursor.execute("SELECT * FROM upload_file WHERE transaction_id IN %(tid)s LIMIT %(st)s,%(end)s",{"tid":lid,"st":startat,"end":perpage})
+			else:
+				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s) ORDER BY "+typ+" LIMIT %s,%s;"
 		
-			cursor.execute(query,(lid,first_name,last_name,st_date,end_date,startat,perpage,))
+				cursor.execute(query,(first_name,last_name,st_date,end_date,startat,perpage,))
 
 		data_all=cursor.fetchall()
 		if(len(data_all)<1):
