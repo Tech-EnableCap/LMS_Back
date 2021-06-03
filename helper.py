@@ -236,7 +236,7 @@ def helper_upload(data,cursor,file_type="upload_file"):
 				cursor.execute('''INSERT INTO upload_file VALUES(%s,%s,%s,%s,%s
 					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
 					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
-					%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk+[0,0,0,kk[40]]))
+					%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk+[0,0,0,kk[40],'ongoing']))
 			dic={}
 			kk=[]
 	elif(file_type=="master_repay"):
