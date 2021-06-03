@@ -19,12 +19,12 @@ from flask_cors import CORS, cross_origin
 app=Flask(__name__)
 CORS(app)
 
-app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
-app.config['MYSQL_USER']='tech'
-app.config['MYSQL_PASSWORD']='tech_enablecap'
-#app.config['MYSQL_HOST']='localhost'
-#app.config['MYSQL_USER']='root'
-#app.config['MYSQL_PASSWORD']=''
+#app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
+#app.config['MYSQL_USER']='tech'
+#app.config['MYSQL_PASSWORD']='tech_enablecap'
+app.config['MYSQL_HOST']='localhost'
+app.config['MYSQL_USER']='root'
+app.config['MYSQL_PASSWORD']=''
 app.config['MYSQL_DB']='lms'
 app.config['MYSQL_DATABASE_PORT']=3306
 
@@ -71,8 +71,6 @@ def res():
 			print(msg)
 		except Exception as e:
 			msg["error"]=str(e)
-			print("database error")
-			print(msg)
 	else:
 		d=d['efx']
 		d=d.split(';')[1]
@@ -95,7 +93,6 @@ def res():
 			cursor.close()
 		except Exception as e:
 			msg=str(e)
-			print("database error")
 		data['Loan Amount']=amount_list
 		data=data.fillna("N/A")
 		try:
@@ -120,8 +117,6 @@ def res():
 			msg="upload done"
 		except Exception as e:
 			msg=str(e)
-			print("database error")
-			print(msg)
 
 	return jsonify({"msg":msg})
 
@@ -224,7 +219,6 @@ def view_up():
 	msg={}
 	req=request.data
 	req=json.loads(req)
-	print(pageidx)
 	#pageidx=req.get("idx","0")
 	lid=req.get("lid",None)
 	if(lid):
@@ -462,7 +456,6 @@ def analysis():
 			cursor.close()
 		except Exception as e:
 			msg["error"]=str(e)
-			print(e)
 	try:
 		cursor=mysql.connection.cursor()
 		query="SELECT * FROM upload_file WHERE "+typ+" BETWEEN %s AND %s;"
@@ -511,15 +504,15 @@ def analysis():
 		#msg["risk"]["nloans"]=number_of_loans
 		#msg["risk"]["vloans"]=volume_of_loans
 
-		print(analyzed_monthly)
-		print("-----------")
-		print(analyzed_weekly)
-		print("-----------")
-		print(analyzed_total)
-		print("-----------")
-		print(number_of_loans)
-		print("-----------")
-		print(volume_of_loans)
+		#print(analyzed_monthly)
+		#print("-----------")
+		#print(analyzed_weekly)
+		#print("-----------")
+		#print(analyzed_total)
+		#print("-----------")
+		#print(number_of_loans)
+		#print("-----------")
+		#print(volume_of_loans)
 
 		cursor.close()
 
@@ -638,58 +631,119 @@ def search_repay_data():
 	return jsonify({"msg":msg})
 
 
-	#test=pd.DataFrame([['a',['2021-05-05','2021-05-12','2021-05-19']],
-                   #['b',['2021-05-05','2021-06-12','2021-07-19']]],columns=["c","d"])
-	#s=test.apply(lambda x: pd.Series(x['d']),axis=1).stack().reset_index(level=1,drop=True)
-	#s.name="f"
-	#test2=test.drop('d',axis=1).join(s)
-	#print(test2)
-	#try:
-		#cursor=mysql.connection.cursor()
-		#dic={}
-		#for length in range(len(test2)):
-			#for i,j in enumerate(test2.columns):
-				#dic[j]=test2.iloc[length][i]
-			#kk=list(dic.values())
-			#cursor.execute('''INSERT INTO test2 VALUES(%s,%s)''',(kk))
-			#dic={}
-			#kk=[]
-		#mysql.connection.commit()
-		#cursor.close()
-		#msg="upload done"
-	#except Exception as e:
-		#msg=str(e)
-		#print("database error")
-		#print(msg)
-	#master_repay=master_repay_helper(d)
-	#print(master_repay)
-
-	#return jsonify({"msg":msg})
-
-
-@app.route("/findtest",methods=["POST"])
+@app.route("/repay_track",methods=["POST"])
 @cross_origin(supports_credentials=True)
-def find_test():
+def add_repay_tracker():
+	msg={}
 	req=request.data
 	req=json.loads(req)
-	st_date=req.get("stDate",None)
-	end_date=req.get("endDate",None)
-	try:
-		cursor=mysql.connection.cursor()
-		query="SELECT * FROM test2 WHERE f BETWEEN %s AND %s;"
-		cursor.execute(query,(st_date,end_date,))
-		data_all=cursor.fetchall()
-		print(data_all)
-		cursor.close()
-	except Exception as e:
-		print(e)
-	return jsonify({"msg":"ok"})
+	lid=req.get("lid",None)
+	p_date=req.get("date",None)
+	amt=req.get("pmt",None)
+	remark=req.get("rem",None)
+	if(lid is None or p_date is None or amt is None):
+		msg["error"]="no valid data"
+	else:
+		try:
+			cursor=mysql.connection.cursor()
+			#query="INSERT INTO repay_tracker(transaction_id,payment_date,payment_amount) VALUES(%s,%s,%s);"
+			#cursor.execute(query,(lid,p_date,amt))
+			#mysql.connection.commit()
+			query="SELECT loan_tenure,emi_amt,repayment_type,first_inst_date,emi_amount_received,carry_f,emi_number,emi_date_flag,partner_loan_id,first_name,last_name FROM upload_file WHERE transaction_id=%s;"
+			cursor.execute(query,(lid,))
+			data_all=cursor.fetchall()
+			out=repay_generator(data_all,p_date,amt)
+			if(len(out)==1):
+				msg["error"]="emi amount is more than total due"
+			else:
+				query="UPDATE upload_file SET emi_amount_received=%s,carry_f=%s,emi_number=%s,emi_date_flag=%s,receipt_status=%s WHERE transaction_id=%s;"
+				cursor.execute(query,(out[0],out[1],out[2],out[3],out[6],lid))
+				print("here")
+				#query="SELECT emi_amount_received,carry_f,emi_number,emi_date_flag FROM upload_file WHERE transaction_id=%s;"
+				#cursor.execute(query,(lid,))
+				#data_all=cursor.fetchall()
+				#print(data_all)
+
+				query="INSERT INTO repay_tracker(transaction_id,payment_date,supposed_date,payment_amount,due,carry_f,status,remark) VALUES(%s,%s,%s,%s,%s,%s,%s,%s);"
+				cursor.execute(query,(lid,p_date,out[11],amt,out[5],out[1],out[4],remark))
+				mysql.connection.commit()
+
+				msg["success"]="data added"
+			cursor.close()
+		except Exception as e:
+			msg["error"]=str(e)
+	return jsonify({"msg":msg})
 
 
-@app.route("/testq",methods=["GET"])
+@app.route("/prfdt",methods=["POST"])
 @cross_origin(supports_credentials=True)
-def testq():
-	return jsonify({"msg":"hello world"})
+def prf():
+	msg={}
+	req=request.data
+	req=json.loads(req)
+	lid=req.get("lid",None)
+	date=req.get("date",None)
+	if(lid and date):
+		try:
+			cursor=mysql.connection.cursor()
+			query="SELECT loan_tenure,emi_amt,repayment_type,first_inst_date,emi_amount_received,carry_f,emi_number,emi_date_flag,partner_loan_id,first_name,last_name FROM upload_file WHERE transaction_id=%s;"
+			cursor.execute(query,(lid,))
+			data_all=cursor.fetchall()
+			out=repay_generator(data_all,date,"0")
+			print(out[7])
+			due=out[5]
+			partner_id=out[7]
+			f_name=out[8]
+			l_name=out[9]
+			emi=data_all[0][1]
+			outstanding=out[10]
+			msg["fn"]=f_name
+			msg["ln"]=l_name
+			msg["emi"]=emi
+			msg["pid"]=out[7]
+			msg["out"]=outstanding
+			msg["due"]=due
+			msg["status"]=out[6]
+		except Exception as e:
+			msg["error"]=str(e)
+	else:
+		msg["error"]="invalid data"
+	return jsonify({"msg":msg})
+
+
+@app.route("/track_history",methods=["POST"])
+@cross_origin(supports_credentials=True)
+def repay_history():
+	msg={}
+	req=request.data
+	req=json.loads(req)
+	lid=req.get("lid",None)
+	if(lid):
+		try:
+			cursor=mysql.connection.cursor()
+			query="SELECT * FROM repay_tracker WHERE transaction_id=%s;"
+			cursor.execute(query,(lid,))
+			data_all=cursor.fetchall()
+			cols_query="SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='repay_tracker';"
+			cursor.execute(cols_query,())
+			columns=cursor.fetchall()
+			cols=[i[0] for i in columns]
+			data=pd.DataFrame(data_all,columns=cols)
+			data=data.drop(["id","transaction_id"],axis=1)
+			data['payment_amount']=data['payment_amount'].apply(lambda x:str(x))
+			data['carry_f']=data['carry_f'].apply(lambda x:str(x))
+			data['due']=data['due'].apply(lambda x:str(x))
+			data['payment_date']=data['payment_date'].apply(lambda x:str(x))
+			data['supposed_date']=data['supposed_date'].apply(lambda x:str(x))
+			body=[list(data.iloc[i].values) for i in range(len(data))]
+			msg["data"]=body
+
+		except Exception as e:
+			msg["error"]=str(e)
+	else:
+		msg["error"]="invalid data"
+	return jsonify({"msg":msg})
+
 
 
 

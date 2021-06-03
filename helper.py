@@ -236,7 +236,7 @@ def helper_upload(data,cursor,file_type="upload_file"):
 				cursor.execute('''INSERT INTO upload_file VALUES(%s,%s,%s,%s,%s
 					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
 					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
-					%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk))
+					%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk+[0,0,0,kk[40]]))
 			dic={}
 			kk=[]
 	elif(file_type=="master_repay"):
@@ -517,3 +517,93 @@ def handle_date(data,date1,date2):
 	return df
 
 
+def repay_generator(data,p_date,amt):
+	n_emi=0
+	loan_type=data[0][2]
+	first_emi=data[0][3]
+	loan_tenure=int(data[0][0])
+	emi=int(data[0][1])
+	payed_total=int(data[0][4])
+	carry_forward=int(data[0][5])
+	emi_number=int(data[0][6])
+	emi_date_flag=datetime.datetime.strptime(data[0][7].split(" ")[0],"%Y-%m-%d")
+	receipt_status=" "
+	status=" "
+	flag_date="2200-12-31"
+
+	total_loan_given=emi*loan_tenure
+	residual=total_loan_given-payed_total
+	if(int(amt)>residual):
+		return [0]
+
+
+	d_1=[]
+	if(loan_type=="Weekly"):
+		d=first_emi
+		d_1.append(d)
+		for _ in range(loan_tenure-1):
+			d+=datetime.timedelta(7)
+			d_1.append(d)
+	else:
+		d=first_emi
+		d_1.append(d)
+		for _ in range(loan_tenure-1):
+			d+=relativedelta(months=+1)			
+			d_1.append(d)
+	d_1=[datetime.datetime.strptime(str(i).split(" ")[0],"%Y-%m-%d") for i in d_1]
+	d_1.append(datetime.datetime.strptime(flag_date,"%Y-%m-%d"))
+	p_date=datetime.datetime.strptime(p_date,"%Y-%m-%d")
+	if(p_date>=emi_date_flag):
+		flag=0
+		for i in range(len(d_1)-1):
+			if(p_date>=d_1[i] and p_date<d_1[i+1]):
+				flag=i
+		no_of_emi_expected=flag
+		counter=no_of_emi_expected
+		if(no_of_emi_expected<emi_number):
+			no_of_emi_expected=emi_number
+		due=abs(no_of_emi_expected-emi_number)*emi+carry_forward+emi
+		received=payed_total+int(amt)
+		carry_f=due-int(amt)
+		num_emi=no_of_emi_expected+1
+		emi_dt_flg=[i for i in d_1 if p_date<i][0]
+		if(int(amt)>emi):
+			status="other"
+		if(p_date==emi_date_flag and int(amt)==emi):
+			status="received on time"
+		if(p_date>emi_date_flag and int(amt)==emi):
+			status="received late"
+		if(p_date>emi_date_flag and int(amt)<emi):
+			status="received late and partially received"
+		if(p_date==emi_date_flag and int(amt)<emi):
+			status="partially received"
+
+	if(p_date<emi_date_flag):
+		due=carry_forward
+		carry_f=due-int(amt)
+		num_emi=emi_number
+		received=payed_total+int(amt)
+		emi_dt_flg=emi_date_flag
+		if(int(amt)==emi):
+			status="received advanced"
+		if(int(amt)>emi):
+			status="other"
+		if(int(amt)<emi):
+			status="partially advanced received"
+		if(emi_date_flag==d_1[-1] and int(amt)==emi):
+			status="received late"
+		if(emi_date_flag==d_1[-1] and int(amt)<emi):
+			status="received late and partially received"
+
+	supposed_date=emi_date_flag
+	if(supposed_date==d_1[-1]):
+		supposed_date=d_1[-2]
+
+	total_to_be_received=loan_tenure*emi
+	if(total_to_be_received==received):
+		receipt_status="complete"
+	else:
+		receipt_status="ongoing"
+
+
+	return [received,carry_f,num_emi,emi_dt_flg,status,due,receipt_status,data[0][8],data[0][9],data[0][10],residual,supposed_date]
