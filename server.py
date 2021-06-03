@@ -279,6 +279,10 @@ def view_up():
 		data=pd.DataFrame(data_all,columns=cols)
 		final_data=process_str(data)
 		final_data.index=range(1,len(final_data)+1)
+		final_data['emi_amount_received']=final_data['emi_amount_received'].apply(lambda x:str(x))
+		final_data['carry_f']=final_data['carry_f'].apply(lambda x:str(x))
+		final_data['emi_number']=final_data['emi_number'].apply(lambda x:str(x))
+		final_data['emi_date_flag']=final_data['emi_date_flag'].apply(lambda x:str(x).split(" ")[0])
 		body=[list(final_data.iloc[i].values) for i in range(len(final_data))]
 		cl_name=list(final_data.columns)
 		msg["clName"]=cl_name
