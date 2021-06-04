@@ -517,7 +517,7 @@ def handle_date(data,date1,date2):
 	return df
 
 
-def repay_generator(data,p_date,amt):
+def repay_generator(data,p_date,amt,mode="upload"):
 	n_emi=0
 	loan_type=data[0][2]
 	first_emi=data[0][3]
@@ -529,16 +529,22 @@ def repay_generator(data,p_date,amt):
 	emi_date_flag=datetime.datetime.strptime(data[0][7].split(" ")[0],"%Y-%m-%d")
 	receipt_status=" "
 	status=" "
-	
+	flag_date="2200-12-31"
 
+	last_emi_date=datetime.datetime.strptime(data[0][11].split(" ")[0],"%Y-%m-%d")
+	p_date=datetime.datetime.strptime(p_date,"%Y-%m-%d")
+	if(mode=="upload"):
+		if(p_date<last_emi_date):
+			return [0,0]
 	total_loan_given=emi*loan_tenure
 	residual=total_loan_given-payed_total
 	if(int(amt)>residual):
 		return [0]
 
 	d_1=generate_emi_dates(loan_type,loan_tenure,first_emi)
+	d_1.append(datetime.datetime.strptime(flag_date,"%Y-%m-%d"))
+
 	
-	p_date=datetime.datetime.strptime(p_date,"%Y-%m-%d")
 	if(p_date>=emi_date_flag):
 		flag=0
 		for i in range(len(d_1)-1):
@@ -581,9 +587,6 @@ def repay_generator(data,p_date,amt):
 		if(emi_date_flag==d_1[-1] and int(amt)<emi):
 			status="received late and partially received"
 
-	supposed_date=emi_date_flag
-	if(supposed_date==d_1[-1]):
-		supposed_date=d_1[-2]
 
 	total_to_be_received=loan_tenure*emi
 	if(total_to_be_received==received):
@@ -591,13 +594,15 @@ def repay_generator(data,p_date,amt):
 	else:
 		receipt_status="ongoing"
 
+	p_date=str(p_date).split(" ")[0]
 
-	return [received,carry_f,num_emi,emi_dt_flg,status,due,receipt_status,data[0][8],data[0][9],data[0][10],residual,supposed_date]
+
+	return [received,carry_f,num_emi,emi_dt_flg,status,due,receipt_status,data[0][8],data[0][9],data[0][10],residual,p_date]
 
 
 def generate_emi_dates(loan_type,loan_tenure,first_emi):
 	d_1=[]
-	flag_date="2200-12-31"
+	
 	if(loan_type=="Weekly"):
 		d=first_emi
 		d_1.append(d)
@@ -611,40 +616,56 @@ def generate_emi_dates(loan_type,loan_tenure,first_emi):
 			d+=relativedelta(months=+1)			
 			d_1.append(d)
 	d_1=[datetime.datetime.strptime(str(i).split(" ")[0],"%Y-%m-%d") for i in d_1]
-	d_1.append(datetime.datetime.strptime(flag_date,"%Y-%m-%d"))
+	
 	return d_1
+
 
 
 def generate_payment_report(data_all,emi_dates,emi_amt):
 	all_history={}
 	due=0
 	carry_f=0
-	fisrt_date_paid=datetime.datetime.strptime(str(data_all[0][0]),"%Y-%m-%d")
-	if (fisrt_date_paid==emi_dates[0]):
-		all_history[fisrt_date_paid]=(str(data_all[0][0]),str(data_all[0][1]),str(data_all[0][2]),
-			str(data_all[0][3]),data_all[0][4],data_all[0][5])
-	for i in data_all:
-		date_paid=datetime.datetime.strptime(str(i[0]),"%Y-%m-%d")
-		for j in emi_dates:
-			if j<date_paid:
-				if(emi_dates.index(j)==0):
-					if j not in all_history.keys():
-						#if(int(i[1])>0):
-							#all_history[j]=tuple(i[1:])
-						payment_amount=0
-						due=int(emi_amt)
-						carry_f=int(emi_amt)
-						all_history[j]=(str(j).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ")
+	if(len(data_all)>0):
+		paid_dates=[datetime.datetime.strptime(str(i[0]),"%Y-%m-%d") for i in data_all]
+		all_dates=emi_dates+paid_dates
+		extracted_dates=[]
+		for i in all_dates:
+			if i not in extracted_dates:
+				extracted_dates.append(i)
+		all_dates=sorted(extracted_dates)
+		for i in all_dates:
+			if i not in paid_dates:
+				if(all_dates.index(i)==0):
+					payment_amount=0
+					due=int(emi_amt)
+					carry_f=int(emi_amt)
+					all_history[i]=(str(i).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ")
 				else:
-					if j not in all_history.keys():
-						vals=all_history[list(all_history.keys())[-1]]
-						payment_amount=0
-						due=int(emi_amt)+int(vals[-3])
-						carry_f=due
-						all_history[j]=(str(j).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ")
+					vals=all_history[list(all_history.keys())[-1]]
+					payment_amount=0
+					due=int(emi_amt)+int(vals[-3])
+					carry_f=due
+					all_history[i]=(str(i).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ")
 			else:
-				all_history[date_paid]=(str(i[0]),str(i[1]),str(i[2]),str(i[3]),i[4],i[5])
-				break
-	#all_history=pd.DataFrame([all_history[k] for k in all_history.keys()],columns=["payment_date",
-		#"payment_amount","due","carry_f","status","remark"])
+				for data in data_all:
+					if(datetime.datetime.strptime(str(data[0]),"%Y-%m-%d")==i):
+						break
+				all_history[i]=(str(data[0]),str(data[1]),str(data[2]),str(data[3]),data[4],data[5])
+				#print(all_history)
+	else:
+		emi_dates=sorted(emi_dates)
+		for i in range(len(emi_dates)):
+			if(i==0):
+				payment_amount=0
+				due=int(emi_amt)
+				carry_f=int(emi_amt)
+				all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ")
+			else:
+				vals=all_history[list(all_history.keys())[-1]]
+				payment_amount=0
+				due=int(emi_amt)+int(vals[-3])
+				carry_f=due
+				all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ")
+		print(all_history)
+
 	return all_history

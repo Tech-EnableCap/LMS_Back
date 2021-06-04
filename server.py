@@ -654,15 +654,18 @@ def add_repay_tracker():
 			#query="INSERT INTO repay_tracker(transaction_id,payment_date,payment_amount) VALUES(%s,%s,%s);"
 			#cursor.execute(query,(lid,p_date,amt))
 			#mysql.connection.commit()
-			query="SELECT loan_tenure,emi_amt,repayment_type,first_inst_date,emi_amount_received,carry_f,emi_number,emi_date_flag,partner_loan_id,first_name,last_name FROM upload_file WHERE transaction_id=%s;"
+			query="SELECT loan_tenure,emi_amt,repayment_type,first_inst_date,emi_amount_received,carry_f,emi_number,emi_date_flag,partner_loan_id,first_name,last_name,last_date_flag FROM upload_file WHERE transaction_id=%s;"
 			cursor.execute(query,(lid,))
 			data_all=cursor.fetchall()
+
 			out=repay_generator(data_all,p_date,amt)
 			if(len(out)==1):
 				msg["error"]="emi amount is more than total due"
+			if(len(out)==2):
+				msg["error"]="invalid date"
 			else:
-				query="UPDATE upload_file SET emi_amount_received=%s,carry_f=%s,emi_number=%s,emi_date_flag=%s,receipt_status=%s WHERE transaction_id=%s;"
-				cursor.execute(query,(out[0],out[1],out[2],out[3],out[6],lid))
+				query="UPDATE upload_file SET emi_amount_received=%s,carry_f=%s,emi_number=%s,emi_date_flag=%s,receipt_status=%s,last_date_flag=%s WHERE transaction_id=%s;"
+				cursor.execute(query,(out[0],out[1],out[2],out[3],out[6],out[11],lid))
 				print("here")
 				#query="SELECT emi_amount_received,carry_f,emi_number,emi_date_flag FROM upload_file WHERE transaction_id=%s;"
 				#cursor.execute(query,(lid,))
@@ -691,11 +694,10 @@ def prf():
 	if(lid and date):
 		try:
 			cursor=mysql.connection.cursor()
-			query="SELECT loan_tenure,emi_amt,repayment_type,first_inst_date,emi_amount_received,carry_f,emi_number,emi_date_flag,partner_loan_id,first_name,last_name FROM upload_file WHERE transaction_id=%s;"
+			query="SELECT loan_tenure,emi_amt,repayment_type,first_inst_date,emi_amount_received,carry_f,emi_number,emi_date_flag,partner_loan_id,first_name,last_name,last_date_flag FROM upload_file WHERE transaction_id=%s;"
 			cursor.execute(query,(lid,))
 			data_all=cursor.fetchall()
-			out=repay_generator(data_all,date,"0")
-			print(out[7])
+			out=repay_generator(data_all,date,"0",mode="prfdt")
 			due=out[5]
 			partner_id=out[7]
 			f_name=out[8]
@@ -741,9 +743,6 @@ def repay_history():
 			query="SELECT payment_date,payment_amount,due,carry_f,status,remark FROM repay_tracker WHERE transaction_id=%s ORDER BY payment_date;"
 			cursor.execute(query,(lid,))
 			data_all=cursor.fetchall()
-			if(len(data_all)<1):
-				msg["error"]="no data found based on this search"
-				return jsonify({"msg":msg})
 			print(data_all)
 			print("==================")
 			all_history=generate_payment_report(data_all,emi_dates,emi_amt)
