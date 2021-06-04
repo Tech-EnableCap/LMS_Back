@@ -15,16 +15,17 @@ from helper import *
 import io
 from flask import jsonify
 from flask_cors import CORS, cross_origin
+import datetime
 
 app=Flask(__name__)
 CORS(app)
 
-app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
-app.config['MYSQL_USER']='tech'
-app.config['MYSQL_PASSWORD']='tech_enablecap'
-#app.config['MYSQL_HOST']='localhost'
-#app.config['MYSQL_USER']='root'
-#app.config['MYSQL_PASSWORD']=''
+#app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
+#app.config['MYSQL_USER']='tech'
+#app.config['MYSQL_PASSWORD']='tech_enablecap'
+app.config['MYSQL_HOST']='localhost'
+app.config['MYSQL_USER']='root'
+app.config['MYSQL_PASSWORD']=''
 app.config['MYSQL_DB']='lms'
 app.config['MYSQL_DATABASE_PORT']=3306
 
@@ -668,8 +669,8 @@ def add_repay_tracker():
 				#data_all=cursor.fetchall()
 				#print(data_all)
 
-				query="INSERT INTO repay_tracker(transaction_id,payment_date,supposed_date,payment_amount,due,carry_f,status,remark) VALUES(%s,%s,%s,%s,%s,%s,%s,%s);"
-				cursor.execute(query,(lid,p_date,out[11],amt,out[5],out[1],out[4],remark))
+				query="INSERT INTO repay_tracker(transaction_id,payment_date,payment_amount,due,carry_f,status,remark) VALUES(%s,%s,%s,%s,%s,%s,%s);"
+				cursor.execute(query,(lid,p_date,amt,out[5],out[1],out[4],remark))
 				mysql.connection.commit()
 
 				msg["success"]="data added"
@@ -725,22 +726,45 @@ def repay_history():
 	if(lid):
 		try:
 			cursor=mysql.connection.cursor()
-			query="SELECT * FROM repay_tracker WHERE transaction_id=%s;"
+			query="SELECT repayment_type,loan_tenure,first_inst_date,emi_amt FROM upload_file WHERE transaction_id=%s;"
+			cursor.execute(query,(lid,))
+			fetch_data=cursor.fetchall()
+			if(len(fetch_data)<1):
+				msg["error"]="no data found based on this search"
+				return jsonify({"msg":msg})
+			loan_type=fetch_data[0][0]
+			loan_tenure=int(fetch_data[0][1])
+			first_emi_date=fetch_data[0][2]
+			emi_amt=fetch_data[0][3]
+			emi_dates=generate_emi_dates(loan_type,loan_tenure,first_emi_date)
+			print(emi_dates)
+			query="SELECT payment_date,payment_amount,due,carry_f,status,remark FROM repay_tracker WHERE transaction_id=%s ORDER BY payment_date;"
 			cursor.execute(query,(lid,))
 			data_all=cursor.fetchall()
-			cols_query="SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='repay_tracker';"
-			cursor.execute(cols_query,())
-			columns=cursor.fetchall()
-			cols=[i[0] for i in columns]
-			data=pd.DataFrame(data_all,columns=cols)
-			data=data.drop(["id","transaction_id"],axis=1)
-			data['payment_amount']=data['payment_amount'].apply(lambda x:str(x))
-			data['carry_f']=data['carry_f'].apply(lambda x:str(x))
-			data['due']=data['due'].apply(lambda x:str(x))
-			data['payment_date']=data['payment_date'].apply(lambda x:str(x))
-			data['supposed_date']=data['supposed_date'].apply(lambda x:str(x))
-			body=[list(data.iloc[i].values) for i in range(len(data))]
-			msg["data"]=body
+			if(len(data_all)<1):
+				msg["error"]="no data found based on this search"
+				return jsonify({"msg":msg})
+			print(data_all)
+			print("==================")
+			all_history=generate_payment_report(data_all,emi_dates,emi_amt)
+			print(all_history)
+			all_history=[all_history[i] for i in all_history.keys()]
+			msg["data"]=all_history
+			#cursor.execute(query,(lid,))
+			#data_all=cursor.fetchall()
+			#cols_query="SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='repay_tracker';"
+			#cursor.execute(cols_query,())
+			#columns=cursor.fetchall()
+			#cols=[i[0] for i in columns]
+			#data=pd.DataFrame(data_all,columns=cols)
+			#data=data.drop(["id","transaction_id"],axis=1)
+			#data['payment_amount']=data['payment_amount'].apply(lambda x:str(x))
+			#data['carry_f']=data['carry_f'].apply(lambda x:str(x))
+			#data['due']=data['due'].apply(lambda x:str(x))
+			#data['payment_date']=data['payment_date'].apply(lambda x:str(x))
+			#data['supposed_date']=data['supposed_date'].apply(lambda x:str(x))
+			#body=[list(data.iloc[i].values) for i in range(len(data))]
+			#msg["data"]=body
 
 		except Exception as e:
 			msg["error"]=str(e)
