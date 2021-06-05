@@ -606,6 +606,7 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 	carry_f=0
 	if(len(data_all)>0):
 		paid_dates=[datetime.datetime.strptime(str(i[0]),"%Y-%m-%d") for i in data_all]
+		emi_dates_var=emi_dates.copy()
 		for i in emi_dates:
 			if i in paid_dates:
 				emi_dates.remove(i)
@@ -628,8 +629,12 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 				for data in data_all:
 					if(datetime.datetime.strptime(str(data[0]),"%Y-%m-%d")==i):
 						break
-				all_history[i]=(str(data[0]),str(data[1]),str(data[2]),str(data[3]),"not paid",data[4],"pd")
-				#print(all_history)
+				if i in emi_dates_var:
+					all_history[i]=(str(data[0]),str(data[1]),str(data[2]),str(data[3]),"not paid",data[4],"ed")
+					#print(all_history)
+				else:
+					all_history[i]=(str(data[0]),str(data[1]),str(data[2]),str(data[3]),"not paid",data[4],"pd")
+
 	else:
 		emi_dates=sorted(emi_dates)
 		for i in range(len(emi_dates)):
