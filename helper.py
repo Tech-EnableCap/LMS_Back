@@ -617,18 +617,18 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 					payment_amount=0
 					due=int(emi_amt)
 					carry_f=int(emi_amt)
-					all_history[i]=(str(i).split(" ")[0],str(payment_amount),str(due),str(carry_f)," "," ","ed")
+					all_history[i]=(str(i).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
 				else:
 					vals=all_history[list(all_history.keys())[-1]]
 					payment_amount=0
 					due=int(emi_amt)+int(vals[-4])
 					carry_f=due
-					all_history[i]=(str(i).split(" ")[0],str(payment_amount),str(due),str(carry_f)," "," ","ed")
+					all_history[i]=(str(i).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
 			else:
 				for data in data_all:
 					if(datetime.datetime.strptime(str(data[0]),"%Y-%m-%d")==i):
 						break
-				all_history[i]=(str(data[0]),str(data[1]),str(data[2]),str(data[3])," ",data[4],"pd")
+				all_history[i]=(str(data[0]),str(data[1]),str(data[2]),str(data[3]),"not paid",data[4],"pd")
 				#print(all_history)
 	else:
 		emi_dates=sorted(emi_dates)
@@ -637,13 +637,13 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 				payment_amount=0
 				due=int(emi_amt)
 				carry_f=int(emi_amt)
-				all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f)," "," ","ed")
+				all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
 			else:
 				vals=all_history[list(all_history.keys())[-1]]
 				payment_amount=0
 				due=int(emi_amt)+int(vals[-4])
 				carry_f=due
-				all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f)," "," ","ed")
+				all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
 		print(all_history)
 
 	return all_history
