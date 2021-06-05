@@ -528,13 +528,12 @@ def repay_generator(data,p_date,amt,mode="upload"):
 	emi_number=int(data[0][6])
 	emi_date_flag=datetime.datetime.strptime(data[0][7].split(" ")[0],"%Y-%m-%d")
 	receipt_status=" "
-	status=" "
 	flag_date="2200-12-31"
 
 	last_emi_date=datetime.datetime.strptime(data[0][11].split(" ")[0],"%Y-%m-%d")
 	p_date=datetime.datetime.strptime(p_date,"%Y-%m-%d")
 	if(mode=="upload"):
-		if(p_date<last_emi_date):
+		if(p_date<datetime.datetime.strptime(str(first_emi).split(" ")[0],"%Y-%m-%d") or p_date<=last_emi_date):
 			return [0,0]
 	total_loan_given=emi*loan_tenure
 	residual=total_loan_given-payed_total
@@ -559,16 +558,6 @@ def repay_generator(data,p_date,amt,mode="upload"):
 		carry_f=due-int(amt)
 		num_emi=no_of_emi_expected+1
 		emi_dt_flg=[i for i in d_1 if p_date<i][0]
-		if(int(amt)>emi):
-			status="other"
-		if(p_date==emi_date_flag and int(amt)==emi):
-			status="received on time"
-		if(p_date>emi_date_flag and int(amt)==emi):
-			status="received late"
-		if(p_date>emi_date_flag and int(amt)<emi):
-			status="received late and partially received"
-		if(p_date==emi_date_flag and int(amt)<emi):
-			status="partially received"
 
 	if(p_date<emi_date_flag):
 		due=carry_forward
@@ -576,16 +565,6 @@ def repay_generator(data,p_date,amt,mode="upload"):
 		num_emi=emi_number
 		received=payed_total+int(amt)
 		emi_dt_flg=emi_date_flag
-		if(int(amt)==emi):
-			status="received advanced"
-		if(int(amt)>emi):
-			status="other"
-		if(int(amt)<emi):
-			status="partially advanced received"
-		if(emi_date_flag==d_1[-1] and int(amt)==emi):
-			status="received late"
-		if(emi_date_flag==d_1[-1] and int(amt)<emi):
-			status="received late and partially received"
 
 
 	total_to_be_received=loan_tenure*emi
@@ -597,7 +576,7 @@ def repay_generator(data,p_date,amt,mode="upload"):
 	p_date=str(p_date).split(" ")[0]
 
 
-	return [received,carry_f,num_emi,emi_dt_flg,status,due,receipt_status,data[0][8],data[0][9],data[0][10],residual,p_date]
+	return [received,carry_f,num_emi,emi_dt_flg,due,receipt_status,data[0][8],data[0][9],data[0][10],residual,p_date]
 
 
 def generate_emi_dates(loan_type,loan_tenure,first_emi):
@@ -627,11 +606,10 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 	carry_f=0
 	if(len(data_all)>0):
 		paid_dates=[datetime.datetime.strptime(str(i[0]),"%Y-%m-%d") for i in data_all]
-		all_dates=emi_dates+paid_dates
-		extracted_dates=[]
-		for i in all_dates:
-			if i not in extracted_dates:
-				extracted_dates.append(i)
+		for i in emi_dates:
+			if i in paid_dates:
+				emi_dates.remove(i)
+		extracted_dates=emi_dates+paid_dates
 		all_dates=sorted(extracted_dates)
 		for i in all_dates:
 			if i not in paid_dates:
@@ -639,18 +617,18 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 					payment_amount=0
 					due=int(emi_amt)
 					carry_f=int(emi_amt)
-					all_history[i]=(str(i).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ")
+					all_history[i]=(str(i).split(" ")[0],str(payment_amount),str(due),str(carry_f)," "," ","ed")
 				else:
 					vals=all_history[list(all_history.keys())[-1]]
 					payment_amount=0
-					due=int(emi_amt)+int(vals[-3])
+					due=int(emi_amt)+int(vals[-4])
 					carry_f=due
-					all_history[i]=(str(i).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ")
+					all_history[i]=(str(i).split(" ")[0],str(payment_amount),str(due),str(carry_f)," "," ","ed")
 			else:
 				for data in data_all:
 					if(datetime.datetime.strptime(str(data[0]),"%Y-%m-%d")==i):
 						break
-				all_history[i]=(str(data[0]),str(data[1]),str(data[2]),str(data[3]),data[4],data[5])
+				all_history[i]=(str(data[0]),str(data[1]),str(data[2]),str(data[3])," ",data[4],"pd")
 				#print(all_history)
 	else:
 		emi_dates=sorted(emi_dates)
@@ -659,13 +637,13 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 				payment_amount=0
 				due=int(emi_amt)
 				carry_f=int(emi_amt)
-				all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ")
+				all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f)," "," ","ed")
 			else:
 				vals=all_history[list(all_history.keys())[-1]]
 				payment_amount=0
-				due=int(emi_amt)+int(vals[-3])
+				due=int(emi_amt)+int(vals[-4])
 				carry_f=due
-				all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ")
+				all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f)," "," ","ed")
 		print(all_history)
 
 	return all_history

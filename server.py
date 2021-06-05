@@ -220,6 +220,7 @@ def view_up():
 	msg={}
 	req=request.data
 	req=json.loads(req)
+	print(req)
 	#pageidx=req.get("idx","0")
 	lid=req.get("lid",None)
 	if(lid):
@@ -289,7 +290,6 @@ def view_up():
 		msg["clName"]=cl_name
 		msg["data"]=body
 		cursor.close()
-
 	except Exception as e:
 		msg['error']=str(e)
 
@@ -665,15 +665,15 @@ def add_repay_tracker():
 				msg["error"]="invalid date"
 			else:
 				query="UPDATE upload_file SET emi_amount_received=%s,carry_f=%s,emi_number=%s,emi_date_flag=%s,receipt_status=%s,last_date_flag=%s WHERE transaction_id=%s;"
-				cursor.execute(query,(out[0],out[1],out[2],out[3],out[6],out[11],lid))
+				cursor.execute(query,(out[0],out[1],out[2],out[3],out[5],out[10],lid))
 				print("here")
 				#query="SELECT emi_amount_received,carry_f,emi_number,emi_date_flag FROM upload_file WHERE transaction_id=%s;"
 				#cursor.execute(query,(lid,))
 				#data_all=cursor.fetchall()
 				#print(data_all)
 
-				query="INSERT INTO repay_tracker(transaction_id,payment_date,payment_amount,due,carry_f,status,remark) VALUES(%s,%s,%s,%s,%s,%s,%s);"
-				cursor.execute(query,(lid,p_date,amt,out[5],out[1],out[4],remark))
+				query="INSERT INTO repay_tracker(transaction_id,payment_date,payment_amount,due,carry_f,remark) VALUES(%s,%s,%s,%s,%s,%s);"
+				cursor.execute(query,(lid,p_date,amt,out[4],out[1],remark))
 				mysql.connection.commit()
 
 				msg["success"]="data added"
@@ -698,19 +698,19 @@ def prf():
 			cursor.execute(query,(lid,))
 			data_all=cursor.fetchall()
 			out=repay_generator(data_all,date,"0",mode="prfdt")
-			due=out[5]
-			partner_id=out[7]
-			f_name=out[8]
-			l_name=out[9]
+			due=out[4]
+			partner_id=out[6]
+			f_name=out[7]
+			l_name=out[8]
 			emi=data_all[0][1]
-			outstanding=out[10]
+			outstanding=out[9]
 			msg["fn"]=f_name
 			msg["ln"]=l_name
 			msg["emi"]=emi
-			msg["pid"]=out[7]
+			msg["pid"]=out[6]
 			msg["out"]=outstanding
 			msg["due"]=due
-			msg["status"]=out[6]
+			msg["status"]=out[5]
 		except Exception as e:
 			msg["error"]=str(e)
 	else:
@@ -740,7 +740,7 @@ def repay_history():
 			emi_amt=fetch_data[0][3]
 			emi_dates=generate_emi_dates(loan_type,loan_tenure,first_emi_date)
 			print(emi_dates)
-			query="SELECT payment_date,payment_amount,due,carry_f,status,remark FROM repay_tracker WHERE transaction_id=%s ORDER BY payment_date;"
+			query="SELECT payment_date,payment_amount,due,carry_f,remark FROM repay_tracker WHERE transaction_id=%s ORDER BY payment_date;"
 			cursor.execute(query,(lid,))
 			data_all=cursor.fetchall()
 			print(data_all)
