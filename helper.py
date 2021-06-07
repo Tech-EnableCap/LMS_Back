@@ -618,22 +618,26 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 					payment_amount=0
 					due=int(emi_amt)
 					carry_f=int(emi_amt)
-					all_history[i]=(str(i).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
+					date_ff=date_convert(i)
+					all_history[i]=(date_ff,str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
 				else:
 					vals=all_history[list(all_history.keys())[-1]]
 					payment_amount=0
 					due=int(emi_amt)+int(vals[-4])
 					carry_f=due
-					all_history[i]=(str(i).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
+					date_ff=date_convert(i)
+					all_history[i]=(date_ff,str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
 			else:
 				for data in data_all:
 					if(datetime.datetime.strptime(str(data[0]),"%Y-%m-%d")==i):
 						break
 				if i in emi_dates_var:
-					all_history[i]=(str(data[0]),str(data[1]),str(data[2]),str(data[3]),"not paid",data[4],"ed")
+					date_ff=date_convert(str(data[0]))
+					all_history[i]=(date_ff,str(data[1]),str(data[2]),str(data[3]),"not paid",data[4],"ed")
 					#print(all_history)
 				else:
-					all_history[i]=(str(data[0]),str(data[1]),str(data[2]),str(data[3]),"not paid",data[4],"pd")
+					date_ff=date_convert(str(data[0]))
+					all_history[i]=(date_ff,str(data[1]),str(data[2]),str(data[3]),"not paid",data[4],"pd")
 
 	else:
 		emi_dates=sorted(emi_dates)
@@ -652,3 +656,11 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 		print(all_history)
 
 	return all_history
+
+
+def date_convert(date):
+	if(type(date)==datetime.datetime):
+		date=str(date).split(" ")[0]
+	date_ff=date.split("-")
+	date_ff="-".join([d for d in reversed(date_ff)])
+	return date_ff

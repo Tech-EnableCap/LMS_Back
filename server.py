@@ -437,50 +437,57 @@ def analysis():
 	msg={}
 	risk={}
 	req=request.data
-	if(req):
-		req=json.loads(req)
-		st_date=req.get("stDate",None)
-		end_date=req.get("endDate",None)
-		typ=req.get("cat","loan_app_date")
-		if(st_date is not None and end_date is not None):
-			st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
-			en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
-			gap=en_d-st_d
-			if(gap.days<0):
-				msg["error"]="end date must be bigger"
-				return jsonify({"msg":msg})
-	else:
-		try:
-			cursor=mysql.connection.cursor()
-			query="SELECT disburse_date FROM upload_file ORDER BY disburse_date;"
-			cursor.execute(query,())
-			dates=cursor.fetchall()
-			end_date=str(dates[-1][0])
-			st_date=str(dates[-1][0]-relativedelta(months=+1))
-			typ="disburse_date"
-			cursor.close()
-		except Exception as e:
-			msg["error"]=str(e)
+	#else:
+		#try:
+			#cursor=mysql.connection.cursor()
+			#query="SELECT disburse_date FROM upload_file ORDER BY disburse_date;"
+			#cursor.execute(query,())
+			#dates=cursor.fetchall()
+			#end_date=str(dates[-1][0])
+			#st_date=str(dates[-1][0]-relativedelta(months=+1))
+			#typ="disburse_date"
+			#cursor.close()
+		#except Exception as e:
+			#msg["error"]=str(e)
 	try:
 		cursor=mysql.connection.cursor()
-		query="SELECT * FROM upload_file WHERE "+typ+" BETWEEN %s AND %s;"
+		
 		cols_query="SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='upload_file';"
-		cursor.execute(query,(st_date,end_date,))
-		data_all=cursor.fetchall()
+		cursor.execute(cols_query,())
+		columns=cursor.fetchall()
 
 		query_eq="SELECT * FROM candidate_equifax;"
-		cols_eq="SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='candidate_equifax';"
 		cursor.execute(query_eq,())
 		eq_data=cursor.fetchall()
+
+		cols_eq="SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='candidate_equifax';"
+		cursor.execute(cols_eq,())
+		columns_eq=cursor.fetchall()
+
+		if(req):
+			req=json.loads(req)
+			st_date=req.get("stDate",None)
+			end_date=req.get("endDate",None)
+			typ=req.get("cat","loan_app_date")
+			if(st_date is not None and end_date is not None):
+				st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
+				en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
+				gap=en_d-st_d
+				if(gap.days<0):
+					msg["error"]="end date must be bigger"
+					return jsonify({"msg":msg})
+
+			query="SELECT * FROM upload_file WHERE "+typ+" BETWEEN %s AND %s;"
+			cursor.execute(query,(st_date,end_date,))
+		else:
+			query="SELECT * FROM upload_file;"
+			cursor.execute(query,())
+
+		data_all=cursor.fetchall()
 
 		if(len(data_all)<1 or len(eq_data)<1):
 			msg["error"]="no data found on this search"
 			return jsonify({"msg":msg})
-
-		cursor.execute(cols_query,())
-		columns=cursor.fetchall()
-		cursor.execute(cols_eq,())
-		columns_eq=cursor.fetchall()
 
 		cols=[i[0] for i in columns]
 		data=pd.DataFrame(data_all,columns=cols)
