@@ -224,19 +224,23 @@ def process_str(data):
 
 
 def helper_upload(data,cursor,file_type="upload_file"):
+	c=0
 	dic={}
 	if(file_type=="upload_file"):
 		for length in range(len(data)):
+			
 			for i,j in enumerate(data.columns):
 				dic[j]=data.iloc[length][i]
 			kk=list(dic.values())
 			check="SELECT * FROM upload_file WHERE transaction_id=%s";
 			cursor.execute(check,(kk[0],))
-			if(cursor.rowcount<1):
+
+			if(cursor.rowcount==0):
 				cursor.execute('''INSERT INTO upload_file VALUES(%s,%s,%s,%s,%s
 					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
 					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
-					%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk+[0,0,0,kk[40],'ongoing']))
+					%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk+[0,0,0,kk[40],'ongoing',str(kk[40]).split(" ")[0]]))
+			
 			dic={}
 			kk=[]
 	elif(file_type=="master_repay"):
@@ -246,7 +250,7 @@ def helper_upload(data,cursor,file_type="upload_file"):
 			kk=list(dic.values())
 			check="SELECT * FROM master_repay WHERE transaction_id=%s";
 			cursor.execute(check,(kk[0],))
-			if(cursor.rowcount<1):
+			if(cursor.rowcount==0):
 				cursor.execute('''
 					INSERT INTO master_repay VALUES(%s,%s,%s,%s,%s,%s,%s,%s)
 					''',(kk))
