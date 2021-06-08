@@ -597,7 +597,7 @@ def search_repay_data():
 			
 			data.index=range(1,len(data)+1)
 
-			data=handle_date(data,st_date,end_date,param="")
+			data=handle_date(data,st_date,end_date)
 
 			body=[list(data.iloc[i].values) for i in range(len(data))]
 			cl_name=list(data.columns)
