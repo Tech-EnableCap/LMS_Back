@@ -544,6 +544,8 @@ def search_repay_data():
 	pageidx=request.args.get("idx")
 	req=json.loads(req)
 	lid=req.get("lid",None)
+	if(lid):
+		lid=lid.split(" ")
 	f_name=req.get("fname",None)
 	l_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
@@ -563,6 +565,7 @@ def search_repay_data():
 		cursor.execute(cols_query,())
 		columns=cursor.fetchall()
 		cols=[i[0] for i in columns]
+
 		if(st_date and end_date):
 
 			if(pageidx=="0"):
@@ -594,7 +597,7 @@ def search_repay_data():
 			
 			data.index=range(1,len(data)+1)
 
-			data=handle_date(data,st_date,end_date)
+			data=handle_date(data,st_date,end_date,param="")
 
 			body=[list(data.iloc[i].values) for i in range(len(data))]
 			cl_name=list(data.columns)
@@ -603,20 +606,33 @@ def search_repay_data():
 
 			
 		if(lid):
-			query="SELECT * FROM master_repay WHERE transaction_id=%s"
-			cursor.execute(query,(lid,))
+			if(pageidx=="0"):
+				cursor.execute("SELECT COUNT(*) FROM master_repay WHERE transaction_id IN %(tid)s",{"tid":lid})
+				count=cursor.fetchall()
+				msg["count"]=count[0][0]
+				print(msg)
+			if(pageidx=="-2"):
+				cursor.execute("SELECT COUNT * FROM master_repay WHERE transaction_id IN %(tid)s",{"tid":lid})
+			else:
+				perpage=20
+				startat=int(pageidx)*perpage
+				cursor.execute("SELECT * FROM master_repay WHERE transaction_id IN %(tid)s LIMIT %(st)s,%(end)s",{"tid":lid,"st":startat,"end":perpage})
+			#query="SELECT * FROM master_repay WHERE transaction_id=%s"
+			#cursor.execute(query,(lid,))
 			data_all=cursor.fetchall()
+			print(data_all)
 			if(len(data_all)<1):
 				msg["error"]="no data found based on this search"
 				return jsonify({"msg":msg})
 			data=pd.DataFrame(data_all,columns=cols)
 			data.index=range(1,len(data)+1)
-			m_r,count=handle_single_tid_data(data)
-			body=[list(m_r.iloc[i].values) for i in range(len(m_r))]
-			cl_name=list(m_r.columns)
+			data['st_date']=data['st_date'].apply(lambda x:str(x).split(" ")[0])
+			data['end_date']=data['end_date'].apply(lambda x:str(x).split(" ")[0])
+			body=[list(data.iloc[i].values) for i in range(len(data))]
+			cl_name=list(data.columns)
 			msg["clName"]=cl_name
 			msg["data"]=body
-			msg["count"]=count
+			#msg["count"]=count
 
 		if(f_name and l_name):
 			query="SELECT * FROM master_repay WHERE (first_name=%s AND last_name=%s)"
@@ -626,14 +642,13 @@ def search_repay_data():
 				msg["error"]="no data found based on this search"
 				return jsonify({"msg":msg})
 			data=pd.DataFrame(data_all,columns=cols)
-			#print(data)
 			data.index=range(1,len(data)+1)
-			m_r,count=handle_single_tid_data(data)
-			body=[list(m_r.iloc[i].values) for i in range(len(m_r))]
-			cl_name=list(m_r.columns)
+			data['st_date']=data['st_date'].apply(lambda x:str(x).split(" ")[0])
+			data['end_date']=data['end_date'].apply(lambda x:str(x).split(" ")[0])
+			body=[list(data.iloc[i].values) for i in range(len(data))]
+			cl_name=list(data.columns)
 			msg["clName"]=cl_name
 			msg["data"]=body
-			msg["count"]=count
 
 		cursor.close()
 	except Exception as e:
@@ -668,22 +683,23 @@ def add_repay_tracker():
 			out=repay_generator(data_all,p_date,amt)
 			if(len(out)==1):
 				msg["error"]="emi amount is more than total due"
+				return jsonify({"msg":msg})
 			if(len(out)==2):
 				msg["error"]="invalid date"
-			else:
-				query="UPDATE upload_file SET emi_amount_received=%s,carry_f=%s,emi_number=%s,emi_date_flag=%s,receipt_status=%s,last_date_flag=%s WHERE transaction_id=%s;"
-				cursor.execute(query,(out[0],out[1],out[2],out[3],out[5],out[10],lid))
-				print("here")
-				#query="SELECT emi_amount_received,carry_f,emi_number,emi_date_flag FROM upload_file WHERE transaction_id=%s;"
-				#cursor.execute(query,(lid,))
-				#data_all=cursor.fetchall()
-				#print(data_all)
+				return jsonify({"msg":msg})
+			query="UPDATE upload_file SET emi_amount_received=%s,carry_f=%s,emi_number=%s,emi_date_flag=%s,receipt_status=%s,last_date_flag=%s WHERE transaction_id=%s;"
+			cursor.execute(query,(out[0],out[1],out[2],out[3],out[5],out[10],lid))
+			
+			#query="SELECT emi_amount_received,carry_f,emi_number,emi_date_flag FROM upload_file WHERE transaction_id=%s;"
+			#cursor.execute(query,(lid,))
+			#data_all=cursor.fetchall()
+			#print(data_all)
 
-				query="INSERT INTO repay_tracker(transaction_id,payment_date,payment_amount,due,carry_f,remark) VALUES(%s,%s,%s,%s,%s,%s);"
-				cursor.execute(query,(lid,p_date,amt,out[4],out[1],remark))
-				mysql.connection.commit()
+			query="INSERT INTO repay_tracker(transaction_id,payment_date,payment_amount,due,carry_f,remark) VALUES(%s,%s,%s,%s,%s,%s);"
+			cursor.execute(query,(lid,p_date,amt,out[4],out[1],remark))
+			mysql.connection.commit()
 
-				msg["success"]="data added"
+			msg["success"]="data added"
 			cursor.close()
 		except Exception as e:
 			msg["error"]=str(e)

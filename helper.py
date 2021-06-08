@@ -416,7 +416,7 @@ def risk_params(data,typ="Number"):
 	else:
 	    print("invalid type")
 	    return
-
+'''
 def handle_single_tid_data(data):
 	d_1=[]
 	d_all=[]
@@ -474,7 +474,7 @@ def handle_single_tid_data(data):
 		data_master=data_master.fillna(" ")
 		return data_master,len(d_all)
 
-
+'''
 def handle_date(data,date1,date2):
 	d_1=[]
 	d_all=[]
@@ -537,11 +537,12 @@ def repay_generator(data,p_date,amt,mode="upload"):
 	last_emi_date=datetime.datetime.strptime(data[0][11].split(" ")[0],"%Y-%m-%d")
 	p_date=datetime.datetime.strptime(p_date,"%Y-%m-%d")
 	if(mode=="upload"):
-		if(p_date<datetime.datetime.strptime(str(first_emi).split(" ")[0],"%Y-%m-%d") or p_date<=last_emi_date):
+		if(p_date<last_emi_date):
 			return [0,0]
 	total_loan_given=emi*loan_tenure
 	residual=total_loan_given-payed_total
 	if(int(amt)>residual):
+		print("hereuuuuu")
 		return [0]
 
 	d_1=generate_emi_dates(loan_type,loan_tenure,first_emi)
@@ -608,6 +609,8 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 	all_history={}
 	due=0
 	carry_f=0
+	p=0
+	st=" "
 	if(len(data_all)>0):
 		paid_dates=[datetime.datetime.strptime(str(i[0]),"%Y-%m-%d") for i in data_all]
 		emi_dates_var=emi_dates.copy()
@@ -616,6 +619,8 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 				emi_dates.remove(i)
 		extracted_dates=emi_dates+paid_dates
 		all_dates=sorted(extracted_dates)
+		print(all_dates)
+		#print(all_dates)
 		for i in all_dates:
 			if i not in paid_dates:
 				if(all_dates.index(i)==0):
@@ -632,16 +637,29 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 					date_ff=date_convert(i)
 					all_history[i]=(date_ff,str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
 			else:
+				print(i)
 				for data in data_all:
 					if(datetime.datetime.strptime(str(data[0]),"%Y-%m-%d")==i):
-						break
+						due=data[3]
+						p+=data[1]
+						carry_f=data[3]
+						st=data[4]
+				print(due,p,carry_f,st)
+				print("============")
 				if i in emi_dates_var:
-					date_ff=date_convert(str(data[0]))
-					all_history[i]=(date_ff,str(data[1]),str(data[2]),str(data[3]),"not paid",data[4],"ed")
+					date_ff=date_convert(i)
+					all_history[i]=(date_ff,str(p),str(due),str(carry_f),"not paid",st,"ed")
+					print(all_history)
+					print("==========")
 					#print(all_history)
 				else:
-					date_ff=date_convert(str(data[0]))
-					all_history[i]=(date_ff,str(data[1]),str(data[2]),str(data[3]),"not paid",data[4],"pd")
+					#print(i)
+					date_ff=date_convert(i)
+					all_history[i]=(date_ff,str(p),str(due),str(carry_f),"not paid",st,"pd")
+			due=0
+			carry_f=0
+			p=0
+			st=" "
 
 	else:
 		emi_dates=sorted(emi_dates)
@@ -658,7 +676,9 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 				carry_f=due
 				all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
 		print(all_history)
-
+	print("===========")
+	print(all_history)
+	print("===========")
 	return all_history
 
 
@@ -668,3 +688,5 @@ def date_convert(date):
 	date_ff=date.split("-")
 	date_ff="-".join([d for d in reversed(date_ff)])
 	return date_ff
+
+#
