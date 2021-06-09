@@ -38,9 +38,10 @@ def login_required(f):
 	def check(*args,**kwargs):
 		msg={}
 		token=None
+		print(request.headers)
 		if 'Authorization' in request.headers:
 			token=request.headers['Authorization']
-			token=token.split("Bearer ")[1]
+			token=token.split(" ")[1]
 		if not token:
 			msg["error"]="token is missing"
 			return jsonify({"msg":msg})
@@ -79,8 +80,8 @@ def login():
 
 
 @app.route("/",methods=["POST"])
-@login_required
 @cross_origin(supports_credentials=True)
+@login_required
 def res():
 	msg={}
 	d=request.data
@@ -171,8 +172,8 @@ def res():
 
 
 @app.route("/dmis",methods=["POST"])
-@login_required
 @cross_origin(supports_credentials=True)
+@login_required
 def exp():
 	msg={}
 	req=request.data
@@ -263,6 +264,7 @@ def exp():
 
 @app.route("/viewupload",methods=["POST"])
 @cross_origin(supports_credentials=True)
+@login_required
 def view_up():
 	pageidx=request.args.get('idx')
 	msg={}
@@ -346,6 +348,7 @@ def view_up():
 
 @app.route("/viewequifax",methods=["POST"])
 @cross_origin(supports_credentials=True)
+@login_required
 def view_eq():
 	msg={}
 	pageidx=request.args.get("idx")
@@ -401,6 +404,7 @@ def view_eq():
 
 @app.route("/bankupload",methods=["POST"])
 @cross_origin(supports_credentials=True)
+@login_required
 def expt():
 	msg={}
 	pageidx=request.args.get("idx")
@@ -481,6 +485,7 @@ def expt():
 
 @app.route("/analysis",methods=["POST"])
 @cross_origin(supports_credentials=True)
+@login_required
 def analysis():
 	msg={}
 	risk={}
