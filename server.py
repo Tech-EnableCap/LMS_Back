@@ -13,26 +13,71 @@ import base64
 import datetime
 from helper import *
 import io
+import jwt
 from flask import jsonify
 from flask_cors import CORS, cross_origin
-import datetime
+from functools import wraps
 
 app=Flask(__name__)
 CORS(app)
 
-app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
-app.config['MYSQL_USER']='tech'
-app.config['MYSQL_PASSWORD']='tech_enablecap'
-#app.config['MYSQL_HOST']='localhost'
-#app.config['MYSQL_USER']='root'
-#app.config['MYSQL_PASSWORD']=''
+app.config['SECRET_KEY']='secretkey'
+#app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
+#app.config['MYSQL_USER']='tech'
+#app.config['MYSQL_PASSWORD']='tech_enablecap'
+app.config['MYSQL_HOST']='localhost'
+app.config['MYSQL_USER']='root'
+app.config['MYSQL_PASSWORD']=''
 app.config['MYSQL_DB']='lms'
 app.config['MYSQL_DATABASE_PORT']=3306
 
 mysql=MySQL(app)
 
 
+def login_required(f):
+	@wraps(f)
+	def check(*args,**kwargs):
+		token=None
+		if 'Authorization' in request.headers:
+			token=request.headers['Authorization']
+			token=token.split("Bearer ")[1]
+		if not token:
+			return jsonify({"error":"token is missing"})
+		#data=jwt.decode(token,app.config['SECRET_KEY'])
+		try:
+			data=jwt.decode(token,app.config['SECRET_KEY'],algorithms="HS256")
+		except:
+			return jsonify({"error":"invalid token"})
+		return f(*args,**kwargs)
+	return check
+
+@app.route("/login",methods=["POST"])
+@cross_origin(supports_credentials=True)
+def login():
+	msg={}
+	req=request.data
+	req=json.loads(req)
+	uname=req.get("email",None)
+	password=req.get("pass",None)
+	try:
+		cursor=mysql.connection.cursor()
+		query="SELECT email,pass FROM users WHERE email=%s AND pass=%s";
+		cursor.execute(query,(uname,password,))
+		data=cursor.fetchall()
+		if(len(data)==0):
+			msg["error"]="invalid credential"
+			return jsonify({"msg":msg})
+		token=jwt.encode({'user':uname,'exp':datetime.datetime.utcnow()+datetime.timedelta(minutes=30)},app.config['SECRET_KEY'],algorithm="HS256")
+		msg["token"]=token
+		cursor.close()
+	except Exception as e:
+		msg["error"]=str(e)
+	
+	return jsonify({"msg":msg})
+
+
 @app.route("/",methods=["POST"])
+@login_required
 @cross_origin(supports_credentials=True)
 def res():
 	msg={}
@@ -124,6 +169,7 @@ def res():
 
 
 @app.route("/dmis",methods=["POST"])
+@login_required
 @cross_origin(supports_credentials=True)
 def exp():
 	msg={}
@@ -538,6 +584,7 @@ def analysis():
 
 @app.route("/search_repay",methods=["POST"])
 @cross_origin(supports_credentials=True)
+@login_required
 def search_repay_data():
 	msg={}
 	req=request.data
@@ -660,6 +707,7 @@ def search_repay_data():
 
 @app.route("/repay_track",methods=["POST"])
 @cross_origin(supports_credentials=True)
+@login_required
 def add_repay_tracker():
 	msg={}
 	req=request.data
@@ -708,6 +756,7 @@ def add_repay_tracker():
 
 @app.route("/prfdt",methods=["POST"])
 @cross_origin(supports_credentials=True)
+@login_required
 def prf():
 	msg={}
 	req=request.data
@@ -743,6 +792,7 @@ def prf():
 
 @app.route("/track_history",methods=["POST"])
 @cross_origin(supports_credentials=True)
+@login_required
 def repay_history():
 	msg={}
 	req=request.data
