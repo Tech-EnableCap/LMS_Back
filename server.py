@@ -36,17 +36,20 @@ mysql=MySQL(app)
 def login_required(f):
 	@wraps(f)
 	def check(*args,**kwargs):
+		msg={}
 		token=None
 		if 'Authorization' in request.headers:
 			token=request.headers['Authorization']
 			token=token.split("Bearer ")[1]
 		if not token:
-			return jsonify({"error":"token is missing"})
+			msg["error"]="token is missing"
+			return jsonify({"msg":msg})
 		#data=jwt.decode(token,app.config['SECRET_KEY'])
 		try:
 			data=jwt.decode(token,app.config['SECRET_KEY'],algorithms="HS256")
 		except:
-			return jsonify({"error":"invalid token"})
+			msg["error"]="invalid token"
+			return jsonify({"msg":msg})
 		return f(*args,**kwargs)
 	return check
 
