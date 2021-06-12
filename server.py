@@ -86,42 +86,9 @@ def res():
 	msg={}
 	d=request.data
 	d=json.loads(d)
-	if(list(d.keys())[0]=='disbursement'):
-		print("here")
-		d=d['disbursement']
-		d=d.split(';')[1]
-		d=d.split(',')[1]
-		d=base64.b64decode(d)
-		toread=io.BytesIO()
-		toread.write(d)
-		toread.seek(0)
-		data=pd.read_excel(toread)
-		data=data.fillna("N/A")
-		col_names=data.iloc[0]
-		data=data[1:]
-		data.columns=col_names
-		#d1=master_repay_helper(data)
-		#print(d1)
-		#print("=================")
-		#print(d2)
-		try:
-			cursor=mysql.connection.cursor()
-
-			cursor=helper_upload(data=data,cursor=cursor,file_type="upload_file")
-
-			#####
-			master_repay=master_repay_helper(data)
-			cursor=helper_upload(data=master_repay,cursor=cursor,file_type="master_repay")
-
-
-			mysql.connection.commit()
-			cursor.close()
-			msg["msg"]="Success"
-			print(msg)
-		except Exception as e:
-			msg["error"]=str(e)
-	else:
-		d=d['efx']
+	f_type=list(d.keys())[0]
+	if(f_type=='efx'):
+		d=d[f_type]
 		d=d.split(';')[1]
 		d=d.split(',')[1]
 		d=base64.b64decode(d)
@@ -167,6 +134,44 @@ def res():
 		except Exception as e:
 			msg=str(e)
 
+	else:
+		print("here")
+		d=d[f_type]
+		d=d.split(';')[1]
+		d=d.split(',')[1]
+		d=base64.b64decode(d)
+		toread=io.BytesIO()
+		toread.write(d)
+		toread.seek(0)
+		data=pd.read_excel(toread)
+		data=data.fillna("N/A")
+		col_names=data.iloc[0]
+		data=data[1:]
+		data.columns=col_names
+		#d1=master_repay_helper(data)
+		#print(d1)
+		#print("=================")
+		#print(d2)
+		try:
+			cursor=mysql.connection.cursor()
+
+			db_type=f_type.split("_")[1]
+
+			cursor=helper_upload(data=data,cursor=cursor,db_type=db_type,file_type="upload_file")
+
+			#####
+			master_repay=master_repay_helper(data)
+			cursor=helper_upload(data=master_repay,cursor=cursor,db_type=db_type,file_type="master_repay")
+
+
+			mysql.connection.commit()
+			cursor.close()
+			msg["msg"]="Success"
+			print(msg)
+		except Exception as e:
+			msg["error"]=str(e)
+		
+
 	return jsonify({"msg":msg})
 
 
@@ -187,7 +192,8 @@ def exp():
 	last_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
-	typ=req.get("cat","loan_app_date")
+	typ=req.get("cat",None)
+	comp=req.get("comp",None)
 	if(st_date is not None and end_date is not None):
 		st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
 		en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
@@ -205,37 +211,37 @@ def exp():
 		cols=cols+['eq_score','risk_cat']
 		if(pageidx=="0"):
 			if(lid):
-				cursor.execute("SELECT partner_loan_id FROM upload_file WHERE transaction_id IN %(tid)s",{"tid":lid})
+				cursor.execute("SELECT partner_loan_id FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
 				partner_lids=cursor.fetchall()
 				cursor.execute("SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE upload_file.partner_loan_id IN %(tid)s",{"tid":partner_lids})
 				count=cursor.fetchall()
 			else:
-				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.first_name=%s AND upload_file.last_name=%s OR upload_file."+typ+" BETWEEN %s AND %s);"
-				cursor.execute(query,(first_name,last_name,st_date,end_date,))
+				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.first_name=%s AND upload_file.last_name=%s AND upload_file.comp_name=%s OR upload_file."+typ+" BETWEEN %s AND %s);"
+				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,))
 				count=cursor.fetchall()
 			msg["count"]=len(count)
 
 		if(pageidx=="-2"):
 			if(lid):
-				cursor.execute("SELECT partner_loan_id FROM upload_file WHERE transaction_id IN %(tid)s",{"tid":lid})
+				cursor.execute("SELECT partner_loan_id FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
 				partner_lids=cursor.fetchall()
 				cursor.execute("SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE upload_file.partner_loan_id IN %(tid)s",{"tid":partner_lids})
 			else:
-				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.first_name=%s AND upload_file.last_name=%s OR upload_file."+typ+" BETWEEN %s AND %s);"
-				cursor.execute(query,(first_name,last_name,st_date,end_date,))
+				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.first_name=%s AND upload_file.last_name=%s AND upload_file.comp_name=%s OR upload_file."+typ+" BETWEEN %s AND %s);"
+				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,))
 
 		else:
 			perpage=20
 			startat=int(pageidx)*perpage
 			if(lid):
-				cursor.execute("SELECT partner_loan_id FROM upload_file WHERE transaction_id IN %(tid)s",{"tid":lid})
+				cursor.execute("SELECT partner_loan_id FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
 				partner_lids=cursor.fetchall()
 				cursor.execute("SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE upload_file.partner_loan_id IN %(tid)s LIMIT %(st)s,%(end)s",{'tid':partner_lids,'st':startat,'end':perpage})
 			else:
 				#query="SELECT a1.* a2.equifax_score,a2.category FROM upload_file a1 candidate_equifax a2 WHERE a1.partner_loan_id=a2.partner_loan_id"
-				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.first_name=%s AND upload_file.last_name=%s OR upload_file."+typ+" BETWEEN %s AND %s) ORDER BY upload_file."+typ+" LIMIT %s,%s;"
+				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.first_name=%s AND upload_file.last_name=%s AND upload_file.comp_name=%s OR upload_file."+typ+" BETWEEN %s AND %s) ORDER BY upload_file."+typ+" LIMIT %s,%s;"
 			
-				cursor.execute(query,(first_name,last_name,st_date,end_date,startat,perpage,))
+				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,startat,perpage,))
 
 		data_all=cursor.fetchall()
 		if(len(data_all)<1):
@@ -279,7 +285,8 @@ def view_up():
 	last_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
-	typ=req.get("cat","loan_app_date")
+	typ=req.get("cat",None)
+	comp=req.get("comp",None)
 	if(st_date is not None and end_date is not None):
 		st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
 		en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
@@ -298,30 +305,30 @@ def view_up():
 
 		if(pageidx=="0"):
 			if(lid):
-				cursor.execute("SELECT COUNT(*) FROM upload_file WHERE transaction_id IN %(tid)s",{"tid":lid})
+				cursor.execute("SELECT COUNT(*) FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
 				count=cursor.fetchall()
 			else:
-				query="SELECT COUNT(*) FROM upload_file WHERE (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s);"
-				cursor.execute(query,(first_name,last_name,st_date,end_date,))
+				query="SELECT COUNT(*) FROM upload_file WHERE (first_name=%s AND last_name=%s AND comp_name=%s OR "+typ+" BETWEEN %s AND %s);"
+				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,))
 				count=cursor.fetchall()
 			msg["count"]=count[0][0]
 
 		if(pageidx=="-2"):
 			if(lid):
-				cursor.execute("SELECT * FROM upload_file WHERE transaction_id IN %(tid)s",{"tid":lid})
+				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
 			else:
-				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s);"
-				cursor.execute(query,(first_name,last_name,st_date,end_date,))
+				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s AND comp_name=%s OR "+typ+" BETWEEN %s AND %s);"
+				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,))
 
 		else:
 
 			perpage=20
 			startat=int(pageidx)*perpage
 			if(lid):
-				cursor.execute("SELECT * FROM upload_file WHERE transaction_id IN %(tid)s LIMIT %(st)s,%(end)s;",{"tid":lid,"st":startat,"end":perpage})
+				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s) LIMIT %(st)s,%(end)s;",{"tid":lid,"comp":comp,"st":startat,"end":perpage})
 			else:
-				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s) ORDER BY "+typ+" LIMIT %s,%s;"
-				cursor.execute(query,(first_name,last_name,st_date,end_date,startat,perpage,))
+				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s AND comp_name=%s OR "+typ+" BETWEEN %s AND %s) ORDER BY "+typ+" LIMIT %s,%s;",
+				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,startat,perpage,))
 
 		data_all=cursor.fetchall()
 		if(len(data_all)<1):
@@ -418,7 +425,8 @@ def expt():
 	last_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
-	typ=req.get("cat","loan_app_date")
+	typ=req.get("cat",None)
+	comp=req.get("comp",None)
 	if(st_date is not None and end_date is not None):
 		st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
 		en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
@@ -435,31 +443,31 @@ def expt():
 
 		if(pageidx=="0"):
 			if(lid):
-				cursor.execute("SELECT COUNT(*) FROM upload_file WHERE transaction_id IN %(tid)s",{"tid":lid})
+				cursor.execute("SELECT COUNT(*) FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
 				count=cursor.fetchall()
 			else:
-				query="SELECT COUNT(*) FROM upload_file WHERE (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s);"
-				cursor.execute(query,(first_name,last_name,st_date,end_date,))
+				query="SELECT COUNT(*) FROM upload_file WHERE (first_name=%s AND last_name=%s AND comp_name=%s OR "+typ+" BETWEEN %s AND %s);"
+				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,))
 				count=cursor.fetchall()
 			msg["count"]=count[0][0]
 
 		if(pageidx=="-2"):
 			if(lid):
-				cursor.execute("SELECT * FROM upload_file WHERE transaction_id IN %(tid)s",{"tid":lid})
+				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
 			else:
-				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s);"
-				cursor.execute(query,(first_name,last_name,st_date,end_date,))
+				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s AND comp_name=%s OR "+typ+" BETWEEN %s AND %s);"
+				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,))
 
 		else:
 
 			perpage=20
 			startat=int(pageidx)*perpage
 			if(lid):
-				cursor.execute("SELECT * FROM upload_file WHERE transaction_id IN %(tid)s LIMIT %(st)s,%(end)s",{"tid":lid,"st":startat,"end":perpage})
+				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s) LIMIT %(st)s,%(end)s",{"tid":lid,"comp":comp,"st":startat,"end":perpage})
 			else:
-				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s) ORDER BY "+typ+" LIMIT %s,%s;"
+				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s AND comp_name=%s OR "+typ+" BETWEEN %s AND %s) ORDER BY "+typ+" LIMIT %s,%s;"
 		
-				cursor.execute(query,(first_name,last_name,st_date,end_date,startat,perpage,))
+				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,startat,perpage,))
 
 		data_all=cursor.fetchall()
 		if(len(data_all)<1):
@@ -604,6 +612,7 @@ def search_repay_data():
 	l_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
+	comp=req.get("comp",None)
 
 	if(st_date is not None and end_date is not None):
 		st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
@@ -623,22 +632,22 @@ def search_repay_data():
 		if(st_date and end_date):
 
 			if(pageidx=="0"):
-				query="SELECT COUNT(*) FROM master_repay WHERE (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date);"
-				cursor.execute(query,(st_date,end_date,end_date,st_date,st_date,end_date,))
+				query="SELECT COUNT(*) FROM master_repay WHERE (comp_name=%s AND %s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date);"
+				cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,))
 				count=cursor.fetchall()
 				msg["count"]=count[0][0]
 
 			if(pageidx=="-2"):
-				query="SELECT * FROM master_repay WHERE (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date);"
-				cursor.execute(query,(st_date,end_date,end_date,st_date,st_date,end_date,))
+				query="SELECT * FROM master_repay WHERE (comp_name=%s AND %s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date);"
+				cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,))
 
 			else:	
 				perpage=20
 				startat=int(pageidx)*perpage
 				#query="SELECT DISTINCT transaction_id FROM master_repay WHERE emi_date BETWEEN %s AND %s;"
-				query="SELECT * FROM master_repay WHERE (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date) LIMIT %s,%s;"
-				cursor.execute(query,(st_date,end_date,end_date,st_date,st_date,end_date,startat,perpage,))
-			
+				query="SELECT * FROM master_repay WHERE (comp_name=%s AND %s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date) LIMIT %s,%s;"
+				cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,startat,perpage,))
+	
 			data_all=cursor.fetchall()
 
 			if(len(data_all)<1):
@@ -661,16 +670,16 @@ def search_repay_data():
 			
 		if(lid):
 			if(pageidx=="0"):
-				cursor.execute("SELECT COUNT(*) FROM master_repay WHERE transaction_id IN %(tid)s",{"tid":lid})
+				cursor.execute("SELECT COUNT(*) FROM master_repay WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
 				count=cursor.fetchall()
 				msg["count"]=count[0][0]
 				print(msg)
 			if(pageidx=="-2"):
-				cursor.execute("SELECT COUNT * FROM master_repay WHERE transaction_id IN %(tid)s",{"tid":lid})
+				cursor.execute("SELECT COUNT * FROM master_repay WHERE (transaction_id IN %(tid)s AND comp_name IN %(comp)s)",{"tid":lid,"comp":comp})
 			else:
 				perpage=20
 				startat=int(pageidx)*perpage
-				cursor.execute("SELECT * FROM master_repay WHERE transaction_id IN %(tid)s LIMIT %(st)s,%(end)s",{"tid":lid,"st":startat,"end":perpage})
+				cursor.execute("SELECT * FROM master_repay WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s) LIMIT %(st)s,%(end)s",{"tid":lid,"comp":comp,"st":startat,"end":perpage})
 			#query="SELECT * FROM master_repay WHERE transaction_id=%s"
 			#cursor.execute(query,(lid,))
 			data_all=cursor.fetchall()
@@ -689,8 +698,8 @@ def search_repay_data():
 			#msg["count"]=count
 
 		if(f_name and l_name):
-			query="SELECT * FROM master_repay WHERE (first_name=%s AND last_name=%s)"
-			cursor.execute(query,(f_name,l_name))
+			query="SELECT * FROM master_repay WHERE (first_name=%s AND last_name=%s AND comp_name=%s)"
+			cursor.execute(query,(f_name,l_name,comp_name,))
 			data_all=cursor.fetchall()
 			if(len(data_all)<1):
 				msg["error"]="no data found based on this search"

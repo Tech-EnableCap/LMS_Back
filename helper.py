@@ -223,7 +223,7 @@ def process_str(data):
 	return data
 
 
-def helper_upload(data,cursor,file_type="upload_file"):
+def helper_upload(data,cursor,db_type,file_type="upload_file"):
 	c=0
 	dic={}
 	if(file_type=="upload_file"):
@@ -239,7 +239,7 @@ def helper_upload(data,cursor,file_type="upload_file"):
 				cursor.execute('''INSERT INTO upload_file VALUES(%s,%s,%s,%s,%s
 					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
 					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
-					%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk+[0,0,0,kk[40],'ongoing',str(kk[40]).split(" ")[0]]))
+					%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk+[0,0,0,kk[40],'ongoing',str(kk[40]).split(" ")[0],db_type]))
 			
 			dic={}
 			kk=[]
@@ -252,8 +252,8 @@ def helper_upload(data,cursor,file_type="upload_file"):
 			cursor.execute(check,(kk[0],))
 			if(cursor.rowcount==0):
 				cursor.execute('''
-					INSERT INTO master_repay VALUES(%s,%s,%s,%s,%s,%s,%s,%s)
-					''',(kk))
+					INSERT INTO master_repay VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)
+					''',(kk+[db_type]))
 			dic={}
 			kk=[]
 	return cursor
