@@ -133,7 +133,7 @@ def res():
 			msg="upload done"
 		except Exception as e:
 			msg["error"]=str(e)
-			return msg
+			return jsonify({'msg':msg})
 
 	else:
 		print("here")
@@ -171,7 +171,7 @@ def res():
 			print(msg)
 		except Exception as e:
 			msg["error"]=str(e)
-			return msg
+			return jsonify({'msg':msg})
 		
 
 	return jsonify({"msg":msg})
