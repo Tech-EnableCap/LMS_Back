@@ -264,7 +264,7 @@ def exp():
 		cursor.close()
 
 	except Exception as e:
-		msg['error']=str(e)
+		msg['error']="no data found based on this search"
 
 	return jsonify({"msg":msg})
 
