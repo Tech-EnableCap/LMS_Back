@@ -70,7 +70,7 @@ def login():
 		if(len(data)==0):
 			msg["error"]="invalid credential"
 			return jsonify({"msg":msg})
-		token=jwt.encode({'user':uname,'exp':datetime.datetime.utcnow()+datetime.timedelta(minutes=30)},app.config['SECRET_KEY'],algorithm="HS256")
+		token=jwt.encode({'user':uname,'exp':datetime.datetime.utcnow()+datetime.timedelta(minutes=1440)},app.config['SECRET_KEY'],algorithm="HS256")
 		msg["token"]=token
 		cursor.close()
 	except Exception as e:
@@ -133,6 +133,7 @@ def res():
 			msg="upload done"
 		except Exception as e:
 			msg=str(e)
+			msg["error"]=str(e)
 
 	else:
 		print("here")
@@ -192,7 +193,7 @@ def exp():
 	last_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
-	typ=req.get("cat",None)
+	typ=req.get("cat","loan_app_date")
 	comp=req.get("comp",None)
 	if(st_date is not None and end_date is not None):
 		st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
@@ -285,7 +286,7 @@ def view_up():
 	last_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
-	typ=req.get("cat",None)
+	typ=req.get("cat","loan_app_date")
 	comp=req.get("comp",None)
 	if(st_date is not None and end_date is not None):
 		st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
@@ -327,10 +328,11 @@ def view_up():
 			if(lid):
 				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s) LIMIT %(st)s,%(end)s;",{"tid":lid,"comp":comp,"st":startat,"end":perpage})
 			else:
-				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s AND comp_name=%s OR "+typ+" BETWEEN %s AND %s) ORDER BY "+typ+" LIMIT %s,%s;",
+				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s AND comp_name=%s OR "+typ+" BETWEEN %s AND %s) ORDER BY "+typ+" LIMIT %s,%s;"
 				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,startat,perpage,))
 
 		data_all=cursor.fetchall()
+		print(data_all)
 		if(len(data_all)<1):
 			msg['error']='no data found'
 			return jsonify({"msg":msg})
@@ -425,7 +427,7 @@ def expt():
 	last_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
-	typ=req.get("cat",None)
+	typ=req.get("cat","loan_app_date")
 	comp=req.get("comp",None)
 	if(st_date is not None and end_date is not None):
 		st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
