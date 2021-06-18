@@ -702,7 +702,7 @@ def search_repay_data():
 
 		if(f_name and l_name):
 			query="SELECT * FROM master_repay WHERE (first_name=%s AND last_name=%s AND comp_name=%s)"
-			cursor.execute(query,(f_name,l_name,comp_name,))
+			cursor.execute(query,(f_name,l_name,comp,))
 			data_all=cursor.fetchall()
 			if(len(data_all)<1):
 				msg["error"]="no data found based on this search"
