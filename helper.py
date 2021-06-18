@@ -339,7 +339,6 @@ def monthly_weekly_analysis(data,typ="Weekly"):
 	    return find_mw_analysis
 
 	else:
-	    print("invalid type")
 	    return
 
 
@@ -542,7 +541,6 @@ def repay_generator(data,p_date,amt,mode="upload"):
 	total_loan_given=emi*loan_tenure
 	residual=total_loan_given-payed_total
 	if(int(amt)>residual):
-		print("hereuuuuu")
 		return [0]
 
 	d_1=generate_emi_dates(loan_type,loan_tenure,first_emi)
@@ -619,7 +617,6 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 				emi_dates.remove(i)
 		extracted_dates=emi_dates+paid_dates
 		all_dates=sorted(extracted_dates)
-		print(all_dates)
 		#print(all_dates)
 		for i in all_dates:
 			if i not in paid_dates:
@@ -637,20 +634,15 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 					date_ff=date_convert(i)
 					all_history[i]=(date_ff,str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
 			else:
-				print(i)
 				for data in data_all:
 					if(datetime.datetime.strptime(str(data[0]),"%Y-%m-%d")==i):
 						due=data[3]
 						p+=data[1]
 						carry_f=data[3]
 						st=data[4]
-				print(due,p,carry_f,st)
-				print("============")
 				if i in emi_dates_var:
 					date_ff=date_convert(i)
 					all_history[i]=(date_ff,str(p),str(due),str(carry_f),"not paid",st,"ed")
-					print(all_history)
-					print("==========")
 					#print(all_history)
 				else:
 					#print(i)
@@ -675,10 +667,6 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 				due=int(emi_amt)+int(vals[-4])
 				carry_f=due
 				all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
-		print(all_history)
-	print("===========")
-	print(all_history)
-	print("===========")
 	return all_history
 
 

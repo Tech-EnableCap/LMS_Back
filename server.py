@@ -38,7 +38,6 @@ def login_required(f):
 	def check(*args,**kwargs):
 		msg={}
 		token=None
-		print(request.headers)
 		if 'Authorization' in request.headers:
 			token=request.headers['Authorization']
 			token=token.split(" ")[1]
@@ -136,7 +135,6 @@ def res():
 			return jsonify({'msg':msg})
 
 	else:
-		print("here")
 		d=d[f_type]
 		d=d.split(';')[1]
 		d=d.split(',')[1]
@@ -168,7 +166,6 @@ def res():
 			mysql.connection.commit()
 			cursor.close()
 			msg["msg"]="Success"
-			print(msg)
 		except Exception as e:
 			msg["error"]=str(e)
 			return jsonify({'msg':msg})
@@ -215,6 +212,9 @@ def exp():
 			if(lid):
 				cursor.execute("SELECT partner_loan_id FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
 				partner_lids=cursor.fetchall()
+				if(len(partner_lids)==0):
+					msg["error"]="no data found based on this search"
+					return jsonify({"msg":msg})
 				cursor.execute("SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE upload_file.partner_loan_id IN %(tid)s",{"tid":partner_lids})
 				count=cursor.fetchall()
 			else:
@@ -264,7 +264,7 @@ def exp():
 		cursor.close()
 
 	except Exception as e:
-		msg['error']="no data found based on this search"
+		msg['error']=str(e)
 
 	return jsonify({"msg":msg})
 
@@ -278,7 +278,6 @@ def view_up():
 	msg={}
 	req=request.data
 	req=json.loads(req)
-	print(req)
 	#pageidx=req.get("idx","0")
 	lid=req.get("lid",None)
 	if(lid):
@@ -319,8 +318,8 @@ def view_up():
 			if(lid):
 				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
 			else:
-				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s AND comp_name=%s OR "+typ+" BETWEEN %s AND %s);"
-				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,))
+				query="SELECT * FROM upload_file WHERE (comp_name=%s AND (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s));"
+				cursor.execute(query,(comp,first_name,last_name,st_date,end_date,))
 
 		else:
 
@@ -329,11 +328,10 @@ def view_up():
 			if(lid):
 				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s) LIMIT %(st)s,%(end)s;",{"tid":lid,"comp":comp,"st":startat,"end":perpage})
 			else:
-				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s AND comp_name=%s OR "+typ+" BETWEEN %s AND %s) ORDER BY "+typ+" LIMIT %s,%s;"
-				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,startat,perpage,))
+				query="SELECT * FROM upload_file WHERE (comp_name=%s AND (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s)) ORDER BY "+typ+" LIMIT %s,%s;"
+				cursor.execute(query,(comp,first_name,last_name,st_date,end_date,startat,perpage,))
 
 		data_all=cursor.fetchall()
-		print(data_all)
 		if(len(data_all)<1):
 			msg['error']='no data found'
 			return jsonify({"msg":msg})
@@ -458,8 +456,8 @@ def expt():
 			if(lid):
 				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
 			else:
-				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s AND comp_name=%s OR "+typ+" BETWEEN %s AND %s);"
-				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,))
+				query="SELECT * FROM upload_file WHERE (comp_name=%s AND (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s));"
+				cursor.execute(query,(comp,first_name,last_name,st_date,end_date,))
 
 		else:
 
@@ -468,9 +466,9 @@ def expt():
 			if(lid):
 				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s) LIMIT %(st)s,%(end)s",{"tid":lid,"comp":comp,"st":startat,"end":perpage})
 			else:
-				query="SELECT * FROM upload_file WHERE (first_name=%s AND last_name=%s AND comp_name=%s OR "+typ+" BETWEEN %s AND %s) ORDER BY "+typ+" LIMIT %s,%s;"
+				query="SELECT * FROM upload_file WHERE (comp_name=%s AND (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s)) ORDER BY "+typ+" LIMIT %s,%s;"
 		
-				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,startat,perpage,))
+				cursor.execute(query,(comp,first_name,last_name,st_date,end_date,startat,perpage,))
 
 		data_all=cursor.fetchall()
 		if(len(data_all)<1):
@@ -594,7 +592,6 @@ def analysis():
 
 	except Exception as e:
 		msg["error"]=str(e)
-		print(e)
 
 	return jsonify({"msg":msg})
 
@@ -635,20 +632,20 @@ def search_repay_data():
 		if(st_date and end_date):
 
 			if(pageidx=="0"):
-				query="SELECT COUNT(*) FROM master_repay WHERE (comp_name=%s AND %s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date);"
+				query="SELECT COUNT(*) FROM master_repay WHERE (comp_name=%s AND (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date));"
 				cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,))
 				count=cursor.fetchall()
 				msg["count"]=count[0][0]
 
 			if(pageidx=="-2"):
-				query="SELECT * FROM master_repay WHERE (comp_name=%s AND %s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date);"
+				query="SELECT * FROM master_repay WHERE (comp_name=%s AND (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date));"
 				cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,))
 
 			else:	
 				perpage=20
 				startat=int(pageidx)*perpage
 				#query="SELECT DISTINCT transaction_id FROM master_repay WHERE emi_date BETWEEN %s AND %s;"
-				query="SELECT * FROM master_repay WHERE (comp_name=%s AND %s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date) LIMIT %s,%s;"
+				query="SELECT * FROM master_repay WHERE (comp_name=%s AND (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date)) LIMIT %s,%s;"
 				cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,startat,perpage,))
 	
 			data_all=cursor.fetchall()
@@ -676,7 +673,6 @@ def search_repay_data():
 				cursor.execute("SELECT COUNT(*) FROM master_repay WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
 				count=cursor.fetchall()
 				msg["count"]=count[0][0]
-				print(msg)
 			if(pageidx=="-2"):
 				cursor.execute("SELECT COUNT * FROM master_repay WHERE (transaction_id IN %(tid)s AND comp_name IN %(comp)s)",{"tid":lid,"comp":comp})
 			else:
@@ -686,7 +682,6 @@ def search_repay_data():
 			#query="SELECT * FROM master_repay WHERE transaction_id=%s"
 			#cursor.execute(query,(lid,))
 			data_all=cursor.fetchall()
-			print(data_all)
 			if(len(data_all)<1):
 				msg["error"]="no data found based on this search"
 				return jsonify({"msg":msg})
@@ -831,14 +826,10 @@ def repay_history():
 			first_emi_date=fetch_data[0][2]
 			emi_amt=fetch_data[0][3]
 			emi_dates=generate_emi_dates(loan_type,loan_tenure,first_emi_date)
-			print(emi_dates)
 			query="SELECT payment_date,payment_amount,due,carry_f,remark FROM repay_tracker WHERE transaction_id=%s ORDER BY payment_date;"
 			cursor.execute(query,(lid,))
 			data_all=cursor.fetchall()
-			print(data_all)
-			print("==================")
 			all_history=generate_payment_report(data_all,emi_dates,emi_amt)
-			print(all_history)
 			all_history=[all_history[i] for i in all_history.keys()]
 			msg["data"]=all_history
 			#cursor.execute(query,(lid,))
