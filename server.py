@@ -218,8 +218,8 @@ def exp():
 				cursor.execute("SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE upload_file.partner_loan_id IN %(tid)s",{"tid":partner_lids})
 				count=cursor.fetchall()
 			else:
-				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.first_name=%s AND upload_file.last_name=%s AND upload_file.comp_name=%s OR upload_file."+typ+" BETWEEN %s AND %s);"
-				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,))
+				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.comp_name=%s AND (upload_file.first_name=%s AND upload_file.last_name=%s OR upload_file."+typ+" BETWEEN %s AND %s));"
+				cursor.execute(query,(comp,first_name,last_name,st_date,end_date,))
 				count=cursor.fetchall()
 			msg["count"]=len(count)
 
@@ -229,8 +229,8 @@ def exp():
 				partner_lids=cursor.fetchall()
 				cursor.execute("SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE upload_file.partner_loan_id IN %(tid)s",{"tid":partner_lids})
 			else:
-				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.first_name=%s AND upload_file.last_name=%s AND upload_file.comp_name=%s OR upload_file."+typ+" BETWEEN %s AND %s);"
-				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,))
+				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.comp_name=%s AND (upload_file.first_name=%s AND upload_file.last_name=%s OR upload_file."+typ+" BETWEEN %s AND %s));"
+				cursor.execute(query,(comp,first_name,last_name,st_date,end_date,))
 
 		else:
 			perpage=20
@@ -241,9 +241,9 @@ def exp():
 				cursor.execute("SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE upload_file.partner_loan_id IN %(tid)s LIMIT %(st)s,%(end)s",{'tid':partner_lids,'st':startat,'end':perpage})
 			else:
 				#query="SELECT a1.* a2.equifax_score,a2.category FROM upload_file a1 candidate_equifax a2 WHERE a1.partner_loan_id=a2.partner_loan_id"
-				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.first_name=%s AND upload_file.last_name=%s AND upload_file.comp_name=%s OR upload_file."+typ+" BETWEEN %s AND %s) ORDER BY upload_file."+typ+" LIMIT %s,%s;"
+				query="SELECT upload_file.*,candidate_equifax.equifax_score,candidate_equifax.category FROM upload_file LEFT JOIN candidate_equifax ON upload_file.partner_loan_id=candidate_equifax.partner_loan_id WHERE (upload_file.comp_name=%s AND (upload_file.first_name=%s AND upload_file.last_name=%s OR upload_file."+typ+" BETWEEN %s AND %s)) ORDER BY upload_file."+typ+" LIMIT %s,%s;"
 			
-				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,startat,perpage,))
+				cursor.execute(query,(comp,first_name,last_name,st_date,end_date,startat,perpage,))
 
 		data_all=cursor.fetchall()
 		if(len(data_all)<1):
