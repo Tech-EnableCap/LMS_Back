@@ -354,6 +354,88 @@ def view_up():
 	return jsonify({"msg":msg})
 
 
+####### generate equifax file 
+
+@app.route("/genefx",methods=["POST"])
+@cross_origin(supports_credentials=True)
+@login_required
+def generate_efx_report():
+	msg={}
+	req=request.data
+	pageidx=request.args.get("idx")
+	req=json.loads(req)
+	lid=req.get("lid",None)
+	if(lid):
+		lid=lid.split(" ")
+	first_name=req.get("fname",None)
+	last_name=req.get("lname",None)
+	st_date=req.get("stDate",None)
+	end_date=req.get("endDate",None)
+	comp=req.get("comp",None)
+	typ=req.get("cat","loan_app_date")
+	if(st_date is not None and end_date is not None):
+		st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
+		en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
+		gap=en_d-st_d
+		if(gap.days<0):
+			msg["error"]="end date must be bigger"
+			return jsonify({"msg":msg})
+
+	try:
+		cursor=mysql.connection.cursor()
+		cols_query="SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='upload_file';"
+		cursor.execute(cols_query,())
+		columns=cursor.fetchall()
+		cols=[i[0] for i in columns]
+
+		if(pageidx=="0"):
+			if(lid):
+				cursor.execute("SELECT COUNT(*) FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
+				count=cursor.fetchall()
+			else:
+				query="SELECT COUNT(*) FROM upload_file WHERE (first_name=%s AND last_name=%s AND comp_name=%s OR "+typ+" BETWEEN %s AND %s);"
+				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,))
+				count=cursor.fetchall()
+			msg["count"]=count[0][0]
+
+		if(pageidx=="-2"):
+			if(lid):
+				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
+			else:
+				query="SELECT * FROM upload_file WHERE (comp_name=%s AND (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s));"
+				cursor.execute(query,(comp,first_name,last_name,st_date,end_date,))
+
+		else:
+
+			perpage=20
+			startat=int(pageidx)*perpage
+			if(lid):
+				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s) LIMIT %(st)s,%(end)s;",{"tid":lid,"comp":comp,"st":startat,"end":perpage})
+			else:
+				query="SELECT * FROM upload_file WHERE (comp_name=%s AND (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s)) ORDER BY "+typ+" LIMIT %s,%s;"
+				cursor.execute(query,(comp,first_name,last_name,st_date,end_date,startat,perpage,))
+
+		data_all=cursor.fetchall()
+		if(len(data_all)<1):
+			msg['error']='no data found'
+			return jsonify({"msg":msg})
+		
+		data=pd.DataFrame(data_all,columns=cols)
+		data=equifax_generator(data)
+		data.index=range(1,len(data)+1)
+		body=[list(data.iloc[i].values) for i in range(len(data))]
+		cl_name=list(data.columns)
+		msg["clName"]=cl_name
+		msg["data"]=body
+		cursor.close()
+		
+	except Exception as e:
+		msg['error']=str(e)
+
+	return jsonify({"msg":msg})
+
+
+
 @app.route("/viewequifax",methods=["POST"])
 @cross_origin(supports_credentials=True)
 @login_required

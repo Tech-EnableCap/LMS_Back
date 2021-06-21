@@ -12,6 +12,121 @@ import numpy as npx
 import pandas as pd
 from dateutil.relativedelta import *
 
+
+gender={
+	"Female":"01",
+	"Male":"02",
+	"Transgender":"03"
+}
+
+state_code={
+	"Jammu & Kashmir" :"01",
+	"Himachal Pradesh" : "02",
+	"Punjab" : "03",
+	"Chandigarh" : "04",
+	"Uttaranchal" : "05",
+	"Haryana" : "06",
+	"Delhi" : "07",
+	"Rajasthan" : "08",
+	"Uttar Pradesh" : "09",
+	"Bihar" : "10",
+	"Sikkim" : "11",
+	"Arunachal Pradesh" : "12",
+	"Nagaland" : "13",
+	"Manipur" : "14",
+	"Mizoram" : "15",
+	"Tripura" : "16",
+	"Meghalaya" : "17",
+	"Assam" : "18",
+	"West Bengal" : "19",
+	"Jharkhand" : "20",
+	"Orissa" : "21",
+	"Chhattisgarh" : "22",
+	"Madhya Pradesh" : "23",
+	"Gujarat" : "24",
+	"Daman & Diu" : "25",
+	"Dadra & Nagar Haveli" : "26",
+	"Maharashtra" : "27",
+	"Andhra Pradesh" : "28",
+	"Karnataka" : "29",
+	"Goa" : "30",
+	"Lakshadweep" : "31",
+	"Kerala" : "32",
+	"Tamil Nadu" : "33",
+	"Pondicherry" : "34",
+	"Andaman & Nicobar Islands" : "35",
+	"Telangana" : "36",
+	"APO Address" : "99"
+}
+
+address_cat={
+	"Permanent Address":"01",
+	"Residence Address":"02",
+	"Office Address":"03",
+	"Not Categorized":"04"
+}
+
+residense_code={
+	"Owned":"01",
+	"Rented":"02"
+}
+
+
+acc_type={
+	"Auto Loan" : "01",
+	"Housing Loan" : "02",
+	"Property Loan" : "03",
+	"Loan against Shares/Securities" : "04",
+	"Personal Loan" : "05",
+	"Consumer Loan" : "06",
+	"Gold Loan" : "07",
+	"Education Loan" : "08",
+	"Loan to Professional" : "09",
+	"Credit Card" : "10",
+	"Lease" : "11",
+	"Overdraft" : "12",
+	"Two-wheeler Loan" : "13",
+	"Non-Funded Credit Facility" : "14",
+	"Loan Against Bank Deposits" : "15",
+	"Fleet Card" : "16",
+	"Commercial Vehicle Loan" : "17",
+	"Telco – Wireless (For Future Use)" : "18",
+	"Telco – Broadband (For Future Use)" : "19",
+	"Telco – Landline (For Future Use)" : "20",
+	"Seller Financing" : "21",
+	"GECL Loan Secured" : "23",
+	"GECL Loan Unsecured" : "24",
+	"Secured Credit Card" : "31",
+	"Used Car Loan" : "32",
+	"Construction Equipment Loan" : "33",
+	"Tractor Loan" : "34",
+	"Corporate Credit Card" : "35",
+	"Kisan Credit Card" : "36",
+	"Loan on Credit Card" : "37",
+	"Prime Minister Jaan Dhan Yojana – Overdraft" : "38",
+	"Mudra Loans – Shishu / Kishor / Tarun" : "39",
+	"MicroFinance – Business Loan" : "40",
+	"MicroFinance – Personal Loan" : "41",
+	"MicroFinance – Housing Loan" : "42",
+	"MicroFinance – Others" : "43",
+	"Pradhan Mantri Awas Yojana – Credit Link Subsidy Scheme MAY CLSS" : "44",
+	"P2P Personal Loan" : "45",
+	"P2P Auto Loan" : "46",
+	"P2P Education Loan" : "47",
+	"Business Loan – Secured" : "50",
+	"Business Loan – General" : "51",
+	"Business Loan – Priority Sector – Small Business" : "52",
+	"Business Loan – Priority Sector – Agriculture" : "53",
+	"Business Loan – Priority Sector – Others" : "54",
+	"Business Non-Funded Credit Facility – General" : "55",
+	"Business Non-Funded Credit Facility – Priority Sector – Small Business" : "56",
+	"Business Non-Funded Credit Facility – Priority Sector – Agriculture" : "57",
+	"Business Non-Funded Credit Facility – Priority Sector – Others" : "58",
+	"Business Loan Against Bank Deposits" : "59",
+	"Business Loan – Unsecured" : "61",
+	"Other" : "00"
+}
+
 def eq(param):
     if(param>=700):
         return 'good'
@@ -172,6 +287,128 @@ def disbursal_mis_process(data):
 	final_data=final_data.fillna("N/A")
 	return final_data
 
+def gender_mapper(gen):
+	return gender[gen]
+
+def state_code_mapper(state):
+	return state_code[state]
+
+def equifax_generator(data):
+	consumer_name=data['first_name']+" "+data["last_name"]
+	consumer_name=pd.DataFrame(consumer_name,columns=["Consumer name"])
+	dob=data["dob"].apply(lambda x:str(x).split(" ")[0])
+	dob=dob.apply(lambda x:date_convert(x))
+	gender=data["gender"].apply(lambda x:gender_mapper(x))
+	incom_tax_id=data["appl_pan"]
+	passport_num=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Passport Number"])
+	passport_issue_date=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Passport Issue date"])
+	passport_expiry_date=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Passport Expiry Date"])
+	voter_id_num=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Voter ID Num"])
+	dv_li_num=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Driving License Number"])
+	dv_li_issue_date=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Driving License Issue Date"])
+	dv_li_exp_date=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Driving License Expiry Date"])
+	ration_num=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Ration Card Number"])
+	universal_id=data["aadhar_card_num"]
+	add_id_1=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Additional ID #1"])
+	add_id_2=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Additional ID #2"])
+	mob=data["appl_phone"]
+	tel_res=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Telephone No.Residence"])
+	tel_office=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Telephone No.Office"])
+	ext_office=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Extension Office"])
+	tel_no_other=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Telephone No.Other"])
+	ext_other=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Extension Other"])
+	email_id_1=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Email ID 1"])
+	email_id_2=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Email ID 2"])
+	address1=data["resi_addr_ln1"]
+	st_code1=data["state"].apply(lambda x:state_code_mapper(x))
+	pincode1=data["pincode"]
+	add_category1=pd.DataFrame(npx.array(["02"]*len(data)).reshape(len(data)),columns=["Address Category 1"])
+	res_code1=pd.DataFrame(npx.array(["02"]*len(data)).reshape(len(data)),columns=["Residence Code 1"])
+
+	address2=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Address 2"])
+	st_code2=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["State Code 2"])
+	pincode2=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["PIN Code2"])
+	add_category2=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Address Category 2"])
+	res_code2=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Residence Code 2"])
+
+	cur_member_code=pd.DataFrame(npx.array(["019FP14598"]*len(data)).reshape(len(data)),columns=["Current/New Member Code"])
+	cur_member_short_name=pd.DataFrame(npx.array(["GVRK"]*len(data)).reshape(len(data)),columns=["Current/New Member Short Name"])
+	curr_new_acc_num=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Curr/New Account No"])
+	acc_type=pd.DataFrame(npx.array(["00"]*len(data)).reshape(len(data)),columns=["Account type"])
+	own_ind=pd.DataFrame(npx.array(["01"]*len(data)).reshape(len(data)),columns=["Ownership Indicator"])
+
+	date_op=data["first_inst_date"].apply(lambda x:str(x).split(" ")[0])
+	date_op=date_op.apply(lambda x:date_convert(x))
+	date_clsd=master_repay_helper(data,dtype="other")
+	date_clsd=date_clsd.apply(lambda x:date_convert(x))
+	date_last_pay=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Date of Last Payment"])
+
+	high_cred=data["applied_amount"]
+	current_bal=data["applied_amount"].apply(lambda x:int(x))-data["emi_amount_received"].apply(lambda x:int(x))
+	amt_overdue=data["applied_amount"].apply(lambda x:int(x))-data["emi_amount_received"].apply(lambda x:int(x))
+	current_bal=current_bal.apply(lambda x:str(x))
+	amt_overdue=amt_overdue.apply(lambda x:str(x))
+
+	num_days_past_due=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["No of Days Past Due"])
+	old_mbr=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Old Mbr Code"])
+	old_mbr_st_name=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Old Mbr Short Name"])
+	old_acc_type=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Old Acc Type"])
+	old_ownership_ind=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Old Ownership Indicator"])
+	suit_filed=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Suit Filed / Wilful Default"])
+	wt_off_status=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Written-off and Settled Status"])
+
+	asset_classification=pd.DataFrame(npx.array(["01"]*len(data)).reshape(len(data)),columns=["Asset Classification"])
+	val_coll=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Value of Collateral"])
+	types_col=pd.DataFrame(npx.array(["00"]*len(data)).reshape(len(data)),columns=["Type of Collateral"])
+
+	credit_lim=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Credit Limit"])
+	cash_lim=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Cash Limit"])
+	rate_of_int=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Rate of Interest"])
+	repay_ten=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["RepaymentTenure"])
+	emi_amt=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["EMI Amount"])
+	total_wt_amt=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Written- off Amount (Total)"])
+	wt_principal=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Written- off Principal Amount"])
+	settle_amt=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Settlement Amt"])
+	payment_frequency=data["repayment_type"]
+	frequency=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Frequency"])
+	act_payment_amt=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Actual Payment Amt"])
+	occupation=pd.DataFrame(npx.array(["01"]*len(data)).reshape(len(data)),columns=["Occupation Code"])
+	income=data['annual_income']
+	net_gr_income_ind=pd.DataFrame(npx.array(["N"]*len(data)).reshape(len(data)),columns=["Net/Gross Income Indicator"])
+	ann_income_ind=pd.DataFrame(npx.array(["A"]*len(data)).reshape(len(data)),columns=["Monthly/Annual Income Indicator"])
+
+	date_reported=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Date Reported"])
+
+
+	df=pd.concat([consumer_name,dob,gender,incom_tax_id,passport_num,
+		passport_num,passport_issue_date,passport_expiry_date,voter_id_num,
+		dv_li_num,dv_li_issue_date,dv_li_exp_date,ration_num,universal_id,
+		add_id_1,add_id_2,mob,tel_res,tel_office,ext_office,tel_no_other,
+		ext_other,email_id_1,email_id_2,address1,st_code1,pincode1,add_category1,res_code1,
+		address2,st_code2,pincode2,add_category2,res_code2,cur_member_code,cur_member_short_name,
+		curr_new_acc_num,acc_type,own_ind,date_op,date_last_pay,date_clsd,date_reported,high_cred,current_bal,amt_overdue,
+		num_days_past_due,old_mbr,old_mbr_st_name,old_acc_type,old_ownership_ind,suit_filed,wt_off_status,
+		asset_classification,val_coll,types_col,credit_lim,cash_lim,rate_of_int,repay_ten,emi_amt,total_wt_amt,
+		wt_principal,settle_amt,payment_frequency,frequency,act_payment_amt,occupation,income,net_gr_income_ind,
+		ann_income_ind],axis=1)
+
+	df=df.rename({
+		'dob':'Date of Birth',
+		'gender':'Gender',
+		'appl_pan':'Income Tax ID Number',
+		'aadhar_card_num':'Universal ID Number',
+		'appl_phone':'Telephone No.Mobile',
+		'resi_addr_ln1':'Address 1',
+		'state':'State Code 1',
+		'pincode':'PIN Code1',
+		'first_inst_date':'Date Opened',
+		'end':'Date Closed',
+		0:'Current balance',
+		1:'Amt Overdue',
+		"repayment_type":"Payment Frequency",
+		"annual_income":"income"
+		},axis=1)
+	return df
 
 
 def bank_upload_process(data):
@@ -260,7 +497,7 @@ def helper_upload(data,cursor,db_type,file_type="upload_file"):
 
 
 
-def master_repay_helper(data):
+def master_repay_helper(data,dtype="master_repay"):
 	#d_1=[]
 	d_all=[]
 	for i in range(len(data)):
@@ -287,23 +524,26 @@ def master_repay_helper(data):
 
 	#df=pd.DataFrame({"emi_date":d_all})
 	df=pd.DataFrame(d_all,columns=["st","end"])
-	df.index=range(1,len(df)+1)
-	lid=data['transactionid']
-	first_name=data['first_name']
-	last_name=data['last_name']
-	amt=data['emi_amt']
-	loan_type=data['repayment_type']
-	n_emi=data['loan_tenure']
-	data_master=pd.concat([lid,first_name,last_name,loan_type,n_emi,amt,df],axis=1)
-	#data_master=data_master.fillna("N/A")
-	#s=data_master.apply(lambda x: pd.Series(x['emi_date']),axis=1).stack().reset_index(level=1,drop=True)
-	#s.name="emi_date"
+	if(dtype=="master_repay"):
+		df.index=range(1,len(df)+1)
+		lid=data['transactionid']
+		first_name=data['first_name']
+		last_name=data['last_name']
+		amt=data['emi_amt']
+		loan_type=data['repayment_type']
+		n_emi=data['loan_tenure']
+		data_master=pd.concat([lid,first_name,last_name,loan_type,n_emi,amt,df],axis=1)
+		#data_master=data_master.fillna("N/A")
+		#s=data_master.apply(lambda x: pd.Series(x['emi_date']),axis=1).stack().reset_index(level=1,drop=True)
+		#s.name="emi_date"
 
 
-	#data_master1=data_master.drop('emi_date',axis=1).join(s)
-	#data_master2=data_master1.groupby('emi_date').agg(lambda x:list(x)).reset_index() #['transactionid'].apply(lambda x: [data_master2[data_master2['transactionid']==i]['emi_amt'].values  for i in x]).reset_index()
-	
-	return data_master#,data_master2.iloc[10]
+		#data_master1=data_master.drop('emi_date',axis=1).join(s)
+		#data_master2=data_master1.groupby('emi_date').agg(lambda x:list(x)).reset_index() #['transactionid'].apply(lambda x: [data_master2[data_master2['transactionid']==i]['emi_amt'].values  for i in x]).reset_index()
+		
+		return data_master#,data_master2.iloc[10]
+	else:
+		return df["end"]
 
 
 
