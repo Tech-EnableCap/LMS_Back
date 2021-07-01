@@ -7,7 +7,6 @@ enablecap loan management system v1 2021
 '''
 
 from flask import Flask,request
-from flask_mysqldb import MySQL;
 import json
 import base64
 import datetime
@@ -17,9 +16,14 @@ import jwt
 from flask import jsonify
 from flask_cors import CORS, cross_origin
 from functools import wraps
+from flask_mysqldb import MySQL
+import time
+
 
 app=Flask(__name__)
 CORS(app)
+
+
 
 app.config['SECRET_KEY']='secretkey'
 app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
@@ -31,6 +35,8 @@ app.config['MYSQL_DB']='lms'
 app.config['MYSQL_DATABASE_PORT']=3306
 
 mysql=MySQL(app)
+
+#app.register_blueprint(routes)
 
 
 def login_required(f):
@@ -269,7 +275,6 @@ def exp():
 	return jsonify({"msg":msg})
 
 
-
 @app.route("/viewupload",methods=["POST"])
 @cross_origin(supports_credentials=True)
 @login_required
@@ -373,6 +378,7 @@ def generate_efx_report():
 	end_date=req.get("endDate",None)
 	comp=req.get("comp",None)
 	typ=req.get("cat","loan_app_date")
+	r_status=req.get("status","ongoing")
 	if(st_date is not None and end_date is not None):
 		st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
 		en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
@@ -380,6 +386,8 @@ def generate_efx_report():
 		if(gap.days<0):
 			msg["error"]="end date must be bigger"
 			return jsonify({"msg":msg})
+	else:
+		end_date=str(datetime.datetime.now()).split(" ")[0]
 
 	try:
 		cursor=mysql.connection.cursor()
@@ -390,30 +398,30 @@ def generate_efx_report():
 
 		if(pageidx=="0"):
 			if(lid):
-				cursor.execute("SELECT COUNT(*) FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
+				cursor.execute("SELECT COUNT(*) FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s AND receipt_status=%(ong)s)",{"tid":lid,"comp":comp,"ong":r_status})
 				count=cursor.fetchall()
 			else:
-				query="SELECT COUNT(*) FROM upload_file WHERE (first_name=%s AND last_name=%s AND comp_name=%s OR "+typ+" BETWEEN %s AND %s);"
-				cursor.execute(query,(first_name,last_name,comp,st_date,end_date,))
+				query="SELECT COUNT(*) FROM upload_file WHERE (comp_name=%s AND (receipt_status=%s AND (first_name=%s AND last_name=%s OR "+typ+">=%s AND "+typ+"<=%s)));"
+				cursor.execute(query,(comp,r_status,first_name,last_name,st_date,end_date,))
 				count=cursor.fetchall()
 			msg["count"]=count[0][0]
 
 		if(pageidx=="-2"):
 			if(lid):
-				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
+				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s AND receipt_status=%(ong)s)",{"tid":lid,"comp":comp,"ong":r_status})
 			else:
-				query="SELECT * FROM upload_file WHERE (comp_name=%s AND (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s));"
-				cursor.execute(query,(comp,first_name,last_name,st_date,end_date,))
+				query="SELECT * FROM upload_file WHERE (comp_name=%s AND (receipt_status=%s AND (first_name=%s AND last_name=%s OR "+typ+">=%s AND "+typ+"<=%s)));"
+				cursor.execute(query,(comp,r_status,first_name,last_name,st_date,end_date,))
 
 		else:
 
 			perpage=20
 			startat=int(pageidx)*perpage
 			if(lid):
-				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s) LIMIT %(st)s,%(end)s;",{"tid":lid,"comp":comp,"st":startat,"end":perpage})
+				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s AND receipt_status=%(ong)s) LIMIT %(st)s,%(end)s;",{"tid":lid,"comp":comp,"ong":r_status,"st":startat,"end":perpage})
 			else:
-				query="SELECT * FROM upload_file WHERE (comp_name=%s AND (first_name=%s AND last_name=%s OR "+typ+" BETWEEN %s AND %s)) ORDER BY "+typ+" LIMIT %s,%s;"
-				cursor.execute(query,(comp,first_name,last_name,st_date,end_date,startat,perpage,))
+				query="SELECT * FROM upload_file WHERE (comp_name=%s AND (receipt_status=%s AND (first_name=%s AND last_name=%s OR "+typ+">=%s AND "+typ+"<=%s))) ORDER BY "+typ+" LIMIT %s,%s;"
+				cursor.execute(query,(comp,r_status,first_name,last_name,st_date,end_date,startat,perpage,))
 
 		data_all=cursor.fetchall()
 		if(len(data_all)<1):
@@ -421,16 +429,76 @@ def generate_efx_report():
 			return jsonify({"msg":msg})
 		
 		data=pd.DataFrame(data_all,columns=cols)
-		data=equifax_generator(data)
+		received_amount=[]
+		due_list=[]
+		for i in range(len(data.iloc[:])):
+			r_amt=0
+			due_data=0
+			query_t="SELECT * FROM repay_tracker WHERE transaction_id=%s ORDER BY payment_date"
+			cursor.execute(query_t,(data.iloc[i]["transaction_id"],))
+			data_all=cursor.fetchall()
+			if(len(data_all)<1):
+
+				query_data=((data.iloc[i]["loan_tenure"],data.iloc[i]["emi_amt"],data.iloc[i]["repayment_type"],data.iloc[i]["first_inst_date"],
+					data.iloc[i]["emi_amount_received"],data.iloc[i]["carry_f"],data.iloc[i]["emi_number"],data.iloc[i]["emi_date_flag"],
+					data.iloc[i]["partner_loan_id"],data.iloc[i]["first_name"],data.iloc[i]["last_name"],data.iloc[i]["last_date_flag"]),)
+
+				pp=repay_generator(query_data,end_date,"0",mode="prfdt")
+				due_data=int(pp[4])
+				if(due_data<0):
+					due_data=0
+				r_amt=int(data.iloc[i]["emi_amount_received"])
+
+				due_list.append(due_data)
+				received_amount.append(r_amt)
+
+
+			if(len(data_all)>0):
+
+				if(en_d<=datetime.datetime.strptime(str(data_all[-1][3]),"%Y-%m-%d")):
+					
+					for p_data in reversed(data_all):
+						if(en_d>=datetime.datetime.strptime(str(p_data[3]),"%Y-%m-%d")):
+							due_data=int(p_data[4])-int(p_data[2])
+							if(due_data<0):
+								due_data=0
+							break
+
+					for p_data in data_all:
+						if(en_d<datetime.datetime.strptime(str(p_data[3]),"%Y-%m-%d")):
+							break
+						r_amt+=int(p_data[2])
+
+				elif(en_d>datetime.datetime.strptime(str(data_all[-1][3]),"%Y-%m-%d")):
+
+					query_data=((data.iloc[i]["loan_tenure"],data.iloc[i]["emi_amt"],data.iloc[i]["repayment_type"],data.iloc[i]["first_inst_date"],
+						data.iloc[i]["emi_amount_received"],data.iloc[i]["carry_f"],data.iloc[i]["emi_number"],data.iloc[i]["emi_date_flag"],
+						data.iloc[i]["partner_loan_id"],data.iloc[i]["first_name"],data.iloc[i]["last_name"],data.iloc[i]["last_date_flag"]),)
+
+					pp=repay_generator(query_data,end_date,"0",mode="prfdt")
+					due_data=int(pp[4])
+					if(due_data<0):
+						due_data=0
+					r_amt=int(data.iloc[i]["emi_amount_received"])
+
+				due_list.append(due_data)
+				received_amount.append(r_amt)
+
+
+		#print(due_list)
+		data=equifax_generator(data,end_date,due_list,received_amount)
 		data.index=range(1,len(data)+1)
 		body=[list(data.iloc[i].values) for i in range(len(data))]
 		cl_name=list(data.columns)
 		msg["clName"]=cl_name
 		msg["data"]=body
+
+
 		cursor.close()
 		
 	except Exception as e:
 		msg['error']=str(e)
+		print(data.iloc[i]["transaction_id"])
 
 	return jsonify({"msg":msg})
 
@@ -850,6 +918,51 @@ def add_repay_tracker():
 	return jsonify({"msg":msg})
 
 
+@app.route("/upload_repay",methods=["GET"])
+@cross_origin(supports_credentials=True)
+def up_repay():
+	msg={}
+	data=upload_repay_once()
+	try:
+		cursor=mysql.connection.cursor()
+		for i in range(len(data.iloc[:])):
+			lid=data.iloc[i]['Tid']
+			p_date=data.iloc[i]['Repayment date']
+			amt=data.iloc[i]['Actual EMI deducted (5th)']
+			'''
+			amt=str(amt)
+			#amt=int(amt)
+			if ',' in amt[:]:
+				am=amt.split(",")
+				amt="".join(am)
+				try:
+					amt=int(amt)
+				except:
+					amt=int(float(amt))
+			'''
+			
+			remark=None
+			query="SELECT loan_tenure,emi_amt,repayment_type,first_inst_date,emi_amount_received,carry_f,emi_number,emi_date_flag,partner_loan_id,first_name,last_name,last_date_flag FROM upload_file WHERE transaction_id=%s;"
+			cursor.execute(query,(lid,))
+			data_all=cursor.fetchall()
+			
+			out=repay_generator(data_all,p_date,amt)
+			
+
+			query="UPDATE upload_file SET emi_amount_received=%s,carry_f=%s,emi_number=%s,emi_date_flag=%s,receipt_status=%s,last_date_flag=%s WHERE transaction_id=%s;"
+			cursor.execute(query,(out[0],out[1],out[2],out[3],out[5],out[10],lid))
+			query="INSERT INTO repay_tracker(transaction_id,payment_date,payment_amount,due,carry_f,remark) VALUES(%s,%s,%s,%s,%s,%s);"
+			cursor.execute(query,(lid,p_date,amt,out[4],out[1],remark))
+		mysql.connection.commit()
+		msg["success"]="data added"
+		cursor.close()
+	except Exception as e:
+		msg["error"]=str(e)
+
+	return jsonify({"msg":msg})
+
+
+
 @app.route("/prfdt",methods=["POST"])
 @cross_origin(supports_credentials=True)
 @login_required
@@ -866,6 +979,11 @@ def prf():
 			cursor.execute(query,(lid,))
 			data_all=cursor.fetchall()
 			out=repay_generator(data_all,date,"0",mode="prfdt")
+
+			query="SELECT payment_status FROM upload_file WHERE transaction_id=%s;"
+			cursor.execute(query,(lid,))
+			data_status=cursor.fetchall()
+
 			due=out[4]
 			partner_id=out[6]
 			f_name=out[7]
@@ -878,7 +996,8 @@ def prf():
 			msg["pid"]=out[6]
 			msg["out"]=outstanding
 			msg["due"]=due
-			msg["status"]=out[5]
+			msg["status"]=data_status[0]
+			cursor.close()
 		except Exception as e:
 			msg["error"]=str(e)
 	else:
@@ -929,11 +1048,122 @@ def repay_history():
 			#data['supposed_date']=data['supposed_date'].apply(lambda x:str(x))
 			#body=[list(data.iloc[i].values) for i in range(len(data))]
 			#msg["data"]=body
-
+			cursor.close()
 		except Exception as e:
 			msg["error"]=str(e)
 	else:
 		msg["error"]="invalid data"
+	return jsonify({"msg":msg})
+
+
+
+###################
+'''
+class CronJob(object):
+    def __init__(self,event):
+        self.event=event
+        
+    def run(self):
+        t=datetime.datetime.strptime("2021-06-26 18:38:00","%Y-%m-%d %H:%M:%S")
+        while 1:
+            while datetime.datetime.now() < t:
+                time.sleep(600)
+
+            print(t)
+            t += datetime.timedelta(minutes=10)
+            print(self.event())
+
+'''
+
+#print(datetime.datetime.now())
+
+#cr=CronJob(update_status_cron)
+#cr.run()
+
+
+@app.route("/view_report",methods=["POST"])
+@cross_origin(supports_credentials=True)
+def view_report_status():
+	msg={}
+	req=request.data
+	pageidx=request.args.get("idx")
+	req=json.loads(req)
+	lid=req.get("lid",None)
+	if(lid):
+		lid=lid.split(" ")
+	first_name=req.get("fname",None)
+	last_name=req.get("lname",None)
+	comp=req.get("comp",None)
+	l_status=req.get("loan_status",None)
+	if(l_status):
+		l_status=l_status.split(" ")
+
+	try:
+		cursor=mysql.connection.cursor()
+		cols_query="SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='chk_status';"
+		cursor.execute(cols_query,())
+		columns=cursor.fetchall()
+		cols=[i[0] for i in columns]
+
+		if(pageidx=="0"):
+			if(lid):
+				cursor.execute("SELECT COUNT(*) FROM chk_status WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
+				count=cursor.fetchall()
+			if(first_name and last_name):
+				query="SELECT COUNT(*) FROM chk_status WHERE (comp_name=%s AND (first_name=%s AND last_name=%s));"
+				cursor.execute(query,(comp,first_name,last_name,))
+				count=cursor.fetchall()
+			if(l_status):
+				#query="SELECT COUNT(*) FROM chk_status WHERE (comp_name=%s AND status_up=%s);"
+				cursor.execute("SELECT COUNT(*) FROM chk_status WHERE (comp_name=%(comp)s AND status_up IN %(l_st)s)",{"comp":comp,"l_st":l_status})
+				count=cursor.fetchall()
+
+			msg["count"]=count[0][0]
+
+		if(pageidx=="-2"):
+			if(lid):
+				cursor.execute("SELECT * FROM chk_status WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
+			if(first_name and last_name):
+				query="SELECT * FROM chk_status WHERE (comp_name=%s AND (first_name=%s AND last_name=%s));"
+				cursor.execute(query,(comp,first_name,last_name,))
+			if(l_status):
+				#query="SELECT * FROM chk_status WHERE (comp_name=%s AND status_up=%s);"
+				cursor.execute("SELECT * FROM chk_status WHERE (comp_name=%(comp)s AND status_up IN %(l_st)s)",{"comp":comp,"l_st":l_status})
+				#cursor.execute(query,(comp,l_status,))
+
+		else:
+
+			perpage=20
+			startat=int(pageidx)*perpage
+			if(lid):
+				cursor.execute("SELECT * FROM chk_status WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s) LIMIT %(st)s,%(end)s",{"tid":lid,"comp":comp,"st":startat,"end":perpage})
+			if(first_name and last_name):
+				query="SELECT * FROM chk_status WHERE (comp_name=%s AND (first_name=%s AND last_name=%s)) LIMIT %s,%s;"
+				cursor.execute(query,(comp,first_name,last_name,startat,perpage,))
+			if(l_status):
+				#query="SELECT * FROM chk_status WHERE (comp_name=%s AND status_up=%s) LIMIT %s,%s;"
+				#cursor.execute(query,(comp,l_status,startat,perpage,))
+				cursor.execute("SELECT * FROM chk_status WHERE (comp_name=%(comp)s AND status_up IN %(l_st)s) LIMIT %(st)s,%(end)s",{"comp":comp,"l_st":l_status,"st":startat,"end":perpage})
+
+		data_all=cursor.fetchall()
+		if(len(data_all)<1):
+			msg['error']='no data found'
+			return jsonify({"msg":msg})
+		
+		data=pd.DataFrame(data_all,columns=cols)
+		data['amt_payed_last']=data['amt_payed_last'].apply(lambda x:str(x))
+		data['overdue_amount']=data['overdue_amount'].apply(lambda x:str(x))
+		data['total_outstanding']=data['total_outstanding'].apply(lambda x:str(x))
+		data['no_of_payment_period_missed']=data['no_of_payment_period_missed'].apply(lambda x:str(x))
+		body=[list(data.iloc[i].values) for i in range(len(data))]
+		cl_name=list(data.columns)
+		msg["clName"]=cl_name
+		msg["data"]=body
+		cursor.close()
+		
+	except Exception as e:
+		msg['error']=str(e)
+
 	return jsonify({"msg":msg})
 
 

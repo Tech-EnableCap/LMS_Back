@@ -14,21 +14,21 @@ from dateutil.relativedelta import *
 
 
 gender={
-	"Female":"01",
-	"Male":"02",
-	"Transgender":"03"
+	"Female":"'01",
+	"Male":"'02",
+	"Transgender":"'03"
 }
 
 state_code={
-	"Jammu & Kashmir" :"01",
-	"Himachal Pradesh" : "02",
-	"Punjab" : "03",
-	"Chandigarh" : "04",
-	"Uttaranchal" : "05",
-	"Haryana" : "06",
-	"Delhi" : "07",
-	"Rajasthan" : "08",
-	"Uttar Pradesh" : "09",
+	"Jammu & Kashmir" :"'01",
+	"Himachal Pradesh" : "'02",
+	"Punjab" : "'03",
+	"Chandigarh" : "'04",
+	"Uttaranchal" : "'05",
+	"Haryana" : "'06",
+	"Delhi" : "'07",
+	"Rajasthan" : "'08",
+	"Uttar Pradesh" : "'09",
 	"Bihar" : "10",
 	"Sikkim" : "11",
 	"Arunachal Pradesh" : "12",
@@ -60,28 +60,28 @@ state_code={
 }
 
 address_cat={
-	"Permanent Address":"01",
-	"Residence Address":"02",
-	"Office Address":"03",
-	"Not Categorized":"04"
+	"Permanent Address":"'01",
+	"Residence Address":"'02",
+	"Office Address":"'03",
+	"Not Categorized":"'04"
 }
 
 residense_code={
-	"Owned":"01",
-	"Rented":"02"
+	"Owned":"'01",
+	"Rented":"'02"
 }
 
 
 acc_type={
-	"Auto Loan" : "01",
-	"Housing Loan" : "02",
-	"Property Loan" : "03",
-	"Loan against Shares/Securities" : "04",
-	"Personal Loan" : "05",
-	"Consumer Loan" : "06",
-	"Gold Loan" : "07",
-	"Education Loan" : "08",
-	"Loan to Professional" : "09",
+	"Auto Loan" : "'01",
+	"Housing Loan" : "'02",
+	"Property Loan" : "'03",
+	"Loan against Shares/Securities" : "'04",
+	"Personal Loan" : "'05",
+	"Consumer Loan" : "'06",
+	"Gold Loan" : "'07",
+	"Education Loan" : "'08",
+	"Loan to Professional" : "'09",
 	"Credit Card" : "10",
 	"Lease" : "11",
 	"Overdraft" : "12",
@@ -291,88 +291,127 @@ def gender_mapper(gen):
 	return gender[gen]
 
 def state_code_mapper(state):
-	return state_code[state]
+	if state in state_code:
+		return state_code[state]
+	else:
+		return state_code["APO Address"]
 
-def equifax_generator(data):
+def equifax_generator(data,end_date,due_list,received_amount):
+
 	consumer_name=data['first_name']+" "+data["last_name"]
 	consumer_name=pd.DataFrame(consumer_name,columns=["Consumer name"])
 	dob=data["dob"].apply(lambda x:str(x).split(" ")[0])
-	dob=dob.apply(lambda x:date_convert(x))
+	dob=dob.apply(lambda x:date_convert_efx(x))
+
 	gender=data["gender"].apply(lambda x:gender_mapper(x))
 	incom_tax_id=data["appl_pan"]
-	passport_num=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Passport Number"])
-	passport_issue_date=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Passport Issue date"])
-	passport_expiry_date=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Passport Expiry Date"])
-	voter_id_num=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Voter ID Num"])
-	dv_li_num=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Driving License Number"])
-	dv_li_issue_date=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Driving License Issue Date"])
-	dv_li_exp_date=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Driving License Expiry Date"])
-	ration_num=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Ration Card Number"])
+	passport_num=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Passport Number"])
+	passport_issue_date=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Passport Issue date"])
+	passport_expiry_date=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Passport Expiry Date"])
+	voter_id_num=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Voter ID Num"])
+	dv_li_num=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Driving License Number"])
+	dv_li_issue_date=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Driving License Issue Date"])
+	dv_li_exp_date=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Driving License Expiry Date"])
+	ration_num=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Ration Card Number"])
 	universal_id=data["aadhar_card_num"]
-	add_id_1=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Additional ID #1"])
-	add_id_2=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Additional ID #2"])
+	add_id_1=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Additional ID #1"])
+	add_id_2=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Additional ID #2"])
 	mob=data["appl_phone"]
-	tel_res=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Telephone No.Residence"])
-	tel_office=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Telephone No.Office"])
-	ext_office=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Extension Office"])
-	tel_no_other=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Telephone No.Other"])
-	ext_other=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Extension Other"])
-	email_id_1=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Email ID 1"])
-	email_id_2=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Email ID 2"])
+	tel_res=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Telephone No.Residence"])
+	tel_office=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Telephone No.Office"])
+	ext_office=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Extension Office"])
+	tel_no_other=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Telephone No.Other"])
+	ext_other=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Extension Other"])
+	email_id_1=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Email ID 1"])
+	email_id_2=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Email ID 2"])
 	address1=data["resi_addr_ln1"]
 	st_code1=data["state"].apply(lambda x:state_code_mapper(x))
 	pincode1=data["pincode"]
-	add_category1=pd.DataFrame(npx.array(["02"]*len(data)).reshape(len(data)),columns=["Address Category 1"])
-	res_code1=pd.DataFrame(npx.array(["02"]*len(data)).reshape(len(data)),columns=["Residence Code 1"])
+	add_category1=pd.DataFrame(npx.array(["'02"]*len(data)).reshape(len(data)),columns=["Address Category 1"])
+	res_code1=pd.DataFrame(npx.array(["'02"]*len(data)).reshape(len(data)),columns=["Residence Code 1"])
 
-	address2=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Address 2"])
-	st_code2=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["State Code 2"])
-	pincode2=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["PIN Code2"])
-	add_category2=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Address Category 2"])
-	res_code2=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Residence Code 2"])
+	address2=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Address 2"])
+	st_code2=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["State Code 2"])
+	pincode2=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["PIN Code2"])
+	add_category2=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Address Category 2"])
+	res_code2=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Residence Code 2"])
 
 	cur_member_code=pd.DataFrame(npx.array(["019FP14598"]*len(data)).reshape(len(data)),columns=["Current/New Member Code"])
 	cur_member_short_name=pd.DataFrame(npx.array(["GVRK"]*len(data)).reshape(len(data)),columns=["Current/New Member Short Name"])
-	curr_new_acc_num=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Curr/New Account No"])
-	acc_type=pd.DataFrame(npx.array(["00"]*len(data)).reshape(len(data)),columns=["Account type"])
-	own_ind=pd.DataFrame(npx.array(["01"]*len(data)).reshape(len(data)),columns=["Ownership Indicator"])
+	curr_new_acc_num=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Curr/New Account No"])
+	
+	acc_type=pd.DataFrame(npx.array(["'00"]*len(data)).reshape(len(data)),columns=["Account type"])
+	own_ind=pd.DataFrame(npx.array(["'01"]*len(data)).reshape(len(data)),columns=["Ownership Indicator"])
 
 	date_op=data["first_inst_date"].apply(lambda x:str(x).split(" ")[0])
-	date_op=date_op.apply(lambda x:date_convert(x))
+	date_op=date_op.apply(lambda x:date_convert_efx(x))
 	date_clsd=master_repay_helper(data,dtype="other")
-	date_clsd=date_clsd.apply(lambda x:date_convert(x))
-	date_last_pay=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Date of Last Payment"])
+	date_clsd=date_clsd.apply(lambda x:date_convert_efx(x))
+	date_last_pay=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Date of Last Payment"])
 
 	high_cred=data["applied_amount"]
-	current_bal=data["applied_amount"].apply(lambda x:int(x))-data["emi_amount_received"].apply(lambda x:int(x))
-	amt_overdue=data["applied_amount"].apply(lambda x:int(x))-data["emi_amount_received"].apply(lambda x:int(x))
+	actual_emi=data["loan_tenure"].apply(lambda x:int(x))*data["emi_amt"].apply(lambda x:int(x))
+
+	received_amt=pd.Series(npx.array(received_amount).reshape(len(received_amount),))
+
+	current_bal=actual_emi-received_amt
+
+	'''
+
+	data_for_due=data[["loan_tenure","emi_amt","repayment_type","first_inst_date","emi_amount_received","carry_f","emi_number","emi_date_flag","partner_loan_id","first_name","last_name","last_date_flag"]]
+	
+	#print(end_date)
+
+	due_list=[]
+	for i in range(len(data_for_due.iloc[:])):
+		query_data=((data_for_due.iloc[i]["loan_tenure"],data_for_due.iloc[i]["emi_amt"],
+			data_for_due.iloc[i]["repayment_type"],data_for_due.iloc[i]["first_inst_date"],data_for_due.iloc[i]["emi_amount_received"],
+			data_for_due.iloc[i]["carry_f"],data_for_due.iloc[i]["emi_number"],data_for_due.iloc[i]["emi_date_flag"],
+			data_for_due.iloc[i]["partner_loan_id"],data_for_due.iloc[i]["first_name"],data_for_due.iloc[i]["last_name"],data_for_due.iloc[i]["last_date_flag"]),)
+		#print(query_data)
+		pp=repay_generator(query_data,end_date,"0",mode="prfdt")
+		due_list.append(int(pp[4]))
+		#print(due_list)
+
+	'''
+
+	amt_arr=npx.array(due_list)
+	amt_arr=amt_arr.reshape(len(due_list),1)
+
+	amt_overdue=pd.DataFrame(amt_arr,columns=["Amt Overdue"])
+
+	#amt_overdue.index=range(1,len(amt_overdue)+1)
+
+	#amt_overdue=data["applied_amount"].apply(lambda x:int(x))-data["emi_amount_received"].apply(lambda x:int(x))
 	current_bal=current_bal.apply(lambda x:str(x))
-	amt_overdue=amt_overdue.apply(lambda x:str(x))
+	amt_overdue=amt_overdue["Amt Overdue"].apply(lambda x:str(x))
 
-	num_days_past_due=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["No of Days Past Due"])
-	old_mbr=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Old Mbr Code"])
-	old_mbr_st_name=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Old Mbr Short Name"])
-	old_acc_type=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Old Acc Type"])
-	old_ownership_ind=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Old Ownership Indicator"])
-	suit_filed=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Suit Filed / Wilful Default"])
-	wt_off_status=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Written-off and Settled Status"])
 
-	asset_classification=pd.DataFrame(npx.array(["01"]*len(data)).reshape(len(data)),columns=["Asset Classification"])
-	val_coll=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Value of Collateral"])
-	types_col=pd.DataFrame(npx.array(["00"]*len(data)).reshape(len(data)),columns=["Type of Collateral"])
+	num_days_past_due=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["No of Days Past Due"])
+	old_mbr=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Old Mbr Code"])
+	old_mbr_st_name=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Old Mbr Short Name"])
+	old_acc_num=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Old Acc No"])
+	old_acc_type=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Old Acc Type"])
+	old_ownership_ind=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Old Ownership Indicator"])
+	suit_filed=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Suit Filed / Wilful Default"])
+	wt_off_status=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Written-off and Settled Status"])
 
-	credit_lim=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Credit Limit"])
-	cash_lim=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Cash Limit"])
-	rate_of_int=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Rate of Interest"])
-	repay_ten=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["RepaymentTenure"])
-	emi_amt=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["EMI Amount"])
-	total_wt_amt=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Written- off Amount (Total)"])
-	wt_principal=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Written- off Principal Amount"])
-	settle_amt=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Settlement Amt"])
+	asset_classification=pd.DataFrame(npx.array(["'01"]*len(data)).reshape(len(data)),columns=["Asset Classification"])
+	val_coll=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Value of Collateral"])
+	types_col=pd.DataFrame(npx.array(["'00"]*len(data)).reshape(len(data)),columns=["Type of Collateral"])
+
+	credit_lim=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Credit Limit"])
+	cash_lim=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Cash Limit"])
+	rate_of_int=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Rate of Interest"])
+	repay_ten=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["RepaymentTenure"])
+	emi_amt=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["EMI Amount"])
+	total_wt_amt=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Written- off Amount (Total)"])
+	wt_principal=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Written- off Principal Amount"])
+	settle_amt=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Settlement Amt"])
 	payment_frequency=data["repayment_type"]
-	frequency=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Frequency"])
-	act_payment_amt=pd.DataFrame(npx.array(["N/A"]*len(data)).reshape(len(data)),columns=["Actual Payment Amt"])
-	occupation=pd.DataFrame(npx.array(["01"]*len(data)).reshape(len(data)),columns=["Occupation Code"])
+	frequency=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Frequency"])
+	act_payment_amt=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Actual Payment Amt"])
+	occupation=pd.DataFrame(npx.array(["'01"]*len(data)).reshape(len(data)),columns=["Occupation Code"])
 	income=data['annual_income']
 	net_gr_income_ind=pd.DataFrame(npx.array(["N"]*len(data)).reshape(len(data)),columns=["Net/Gross Income Indicator"])
 	ann_income_ind=pd.DataFrame(npx.array(["A"]*len(data)).reshape(len(data)),columns=["Monthly/Annual Income Indicator"])
@@ -381,13 +420,13 @@ def equifax_generator(data):
 
 
 	df=pd.concat([consumer_name,dob,gender,incom_tax_id,passport_num,
-		passport_num,passport_issue_date,passport_expiry_date,voter_id_num,
+		passport_issue_date,passport_expiry_date,voter_id_num,
 		dv_li_num,dv_li_issue_date,dv_li_exp_date,ration_num,universal_id,
 		add_id_1,add_id_2,mob,tel_res,tel_office,ext_office,tel_no_other,
 		ext_other,email_id_1,email_id_2,address1,st_code1,pincode1,add_category1,res_code1,
 		address2,st_code2,pincode2,add_category2,res_code2,cur_member_code,cur_member_short_name,
 		curr_new_acc_num,acc_type,own_ind,date_op,date_last_pay,date_clsd,date_reported,high_cred,current_bal,amt_overdue,
-		num_days_past_due,old_mbr,old_mbr_st_name,old_acc_type,old_ownership_ind,suit_filed,wt_off_status,
+		num_days_past_due,old_mbr,old_mbr_st_name,old_acc_num,old_acc_type,old_ownership_ind,suit_filed,wt_off_status,
 		asset_classification,val_coll,types_col,credit_lim,cash_lim,rate_of_int,repay_ten,emi_amt,total_wt_amt,
 		wt_principal,settle_amt,payment_frequency,frequency,act_payment_amt,occupation,income,net_gr_income_ind,
 		ann_income_ind],axis=1)
@@ -404,7 +443,7 @@ def equifax_generator(data):
 		'first_inst_date':'Date Opened',
 		'end':'Date Closed',
 		0:'Current balance',
-		1:'Amt Overdue',
+		'applied_amount':'High Credit/Sanctioned Amt',
 		"repayment_type":"Payment Frequency",
 		"annual_income":"income"
 		},axis=1)
@@ -476,7 +515,7 @@ def helper_upload(data,cursor,db_type,file_type="upload_file"):
 				cursor.execute('''INSERT INTO upload_file VALUES(%s,%s,%s,%s,%s
 					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
 					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
-					%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk+[0,0,0,kk[40],'ongoing',str(kk[40]).split(" ")[0],db_type]))
+					%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk+[0,0,0,kk[40],'ongoing','2021-01-01',db_type,'']))
 			
 			dic={}
 			kk=[]
@@ -876,7 +915,7 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 			else:
 				for data in data_all:
 					if(datetime.datetime.strptime(str(data[0]),"%Y-%m-%d")==i):
-						due=data[3]
+						due=data[2]
 						p+=data[1]
 						carry_f=data[3]
 						st=data[4]
@@ -917,4 +956,49 @@ def date_convert(date):
 	date_ff="-".join([d for d in reversed(date_ff)])
 	return date_ff
 
-#
+def date_convert_efx(date):
+	date_ff=date.split("-")
+	list_date=date_ff[::-1]
+	final_date=[]
+	for i in range(len(list_date)):
+		if i==0:
+			d="'"+list_date[i]
+		else:
+			d=list_date[i]
+		final_date.append(d)
+	out_date="".join([d for d in final_date])
+	return out_date
+
+def prepare_date(x):
+	if(x.strip()=="-"):
+		return 0
+	else:
+		x=x.strip()
+		if ',' in x[:]:
+			am=x.split(",")
+			amt="".join(am)
+			try:
+				amt=int(amt)
+			except:
+				amt=int(float(amt))
+			if(amt<0):
+				return 0
+			return amt
+		return int(x)
+
+
+def upload_repay_once():
+	data=pd.read_csv('EMI_Entitled_Monthly June Enablecap v2.xlsx - Sheet.csv')
+	#data=data[['Transactionid','Date','AMOUNT RECEIVED']]
+	data=data[['Tid','Repayment date','Actual EMI deducted (5th)']]
+	data["Actual EMI deducted (5th)"]=data["Actual EMI deducted (5th)"].apply(lambda x:prepare_date(x))
+
+	data=data[data["Actual EMI deducted (5th)"]!=0]
+	data.index=range(0,len(data))
+
+	#data=data.iloc[:1053]
+	return data
+
+
+#def repay_tracker_equifax()
+
