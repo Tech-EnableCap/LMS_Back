@@ -1,0 +1,18 @@
+printf "Git Pull ?(Y/N)"
+read git
+if [ $git == "Y" ]
+then
+git pull origin main
+fi
+printf "Delete all PM2 ?(Y/N)"
+read pm2
+if [ $pm2 == "Y" ]
+then
+echo "Deleting all processes..."
+pm2 delete all
+echo "Delete successfull..."
+fi
+printf "Give name of the process.\n"
+read pm2_name
+echo "Creating new process..."
+pm2 start "FLASK_ENV=production FLASK_APP=server.py  flask run -h 0.0.0.0 -p 5000 --with-threads" --name $pm2_name
