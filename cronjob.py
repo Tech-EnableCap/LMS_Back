@@ -22,6 +22,7 @@ def update_status_cron():
 				return jsonify({"msg":msg})
 
 			for ti_val in ti:
+				print(ti_val)
 				query="SELECT repayment_type,loan_tenure,first_inst_date,emi_amt,first_name,last_name,comp_name,sanction_amount,emi_amount_received FROM upload_file WHERE transaction_id=%s;"
 				cursor.execute(query,(ti_val[0],))
 				fetch_data=cursor.fetchall()
@@ -145,7 +146,7 @@ def update_status_cron():
 					upload_file_update_query="UPDATE upload_file SET payment_status=%s where transaction_id=%s"
 					cursor.execute(upload_file_update_query,(final_out_per_person[11],final_out_per_person[0]))
 				else:
-					up_query="UPDATE chk_status SET last_date_payed=%s,amt_payed_last=%s,overdue_amount=%s,total_outstanding=%s,no_of_payment_period_missed=%s,status_up=%s,flag=%s WHERE transaction_id=%s"
+					up_query="UPDATE chk_status SET last_date_paid=%s,amt_paid_last=%s,overdue_amount=%s,total_outstanding=%s,no_of_payment_period_missed=%s,status_up=%s,flag=%s WHERE transaction_id=%s"
 					cursor.execute(up_query,(final_out_per_person[3],final_out_per_person[4],final_out_per_person[6],final_out_per_person[8],final_out_per_person[10],final_out_per_person[11],final_out_per_person[12],final_out_per_person[0]))
 					upload_file_update_query="UPDATE upload_file SET payment_status=%s where transaction_id=%s"
 					cursor.execute(upload_file_update_query,(final_out_per_person[11],final_out_per_person[0]))

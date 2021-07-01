@@ -1151,7 +1151,7 @@ def view_report_status():
 			return jsonify({"msg":msg})
 		
 		data=pd.DataFrame(data_all,columns=cols)
-		data['amt_payed_last']=data['amt_payed_last'].apply(lambda x:str(x))
+		data['amt_paid_last']=data['amt_paid_last'].apply(lambda x:str(x))
 		data['overdue_amount']=data['overdue_amount'].apply(lambda x:str(x))
 		data['total_outstanding']=data['total_outstanding'].apply(lambda x:str(x))
 		data['no_of_payment_period_missed']=data['no_of_payment_period_missed'].apply(lambda x:str(x))
