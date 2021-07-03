@@ -970,6 +970,7 @@ def date_convert_efx(date):
 	return out_date
 
 def prepare_date(x):
+	x=str(x)
 	if(x.strip()=="-"):
 		return 0
 	else:
@@ -988,12 +989,14 @@ def prepare_date(x):
 
 
 def upload_repay_once():
-	data=pd.read_csv('EMI_Entitled_Monthly June Enablecap v2.xlsx - Sheet.csv')
+	data=pd.read_csv('WEEKLY EMI RECO_30062021 .xlsx - Entitled.csv')
 	#data=data[['Transactionid','Date','AMOUNT RECEIVED']]
-	data=data[['Tid','Repayment date','Actual EMI deducted (5th)']]
-	data["Actual EMI deducted (5th)"]=data["Actual EMI deducted (5th)"].apply(lambda x:prepare_date(x))
+	data=data[['Tid','Repayment Date','Actual EMI deducted']]
+	data["Actual EMI deducted"]=data["Actual EMI deducted"].apply(lambda x:prepare_date(x))
 
-	data=data[data["Actual EMI deducted (5th)"]!=0]
+
+	data=data[data["Actual EMI deducted"]!=0]
+	data["Repayment Date"]=data["Repayment Date"].apply(lambda x:date_convert(x))
 	data.index=range(0,len(data))
 
 	#data=data.iloc[:1053]

@@ -387,7 +387,7 @@ def generate_efx_report():
 			msg["error"]="end date must be bigger"
 			return jsonify({"msg":msg})
 	else:
-		end_date=str(datetime.datetime.now()).split(" ")[0]
+		en_d=str(datetime.datetime.now()).split(" ")[0]
 
 	try:
 		cursor=mysql.connection.cursor()
@@ -927,8 +927,8 @@ def up_repay():
 		cursor=mysql.connection.cursor()
 		for i in range(len(data.iloc[:])):
 			lid=data.iloc[i]['Tid']
-			p_date=data.iloc[i]['Repayment date']
-			amt=data.iloc[i]['Actual EMI deducted (5th)']
+			p_date=data.iloc[i]['Repayment Date']
+			amt=data.iloc[i]['Actual EMI deducted']
 			'''
 			amt=str(amt)
 			#amt=int(amt)
