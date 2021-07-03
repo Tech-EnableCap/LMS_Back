@@ -386,9 +386,10 @@ def generate_efx_report():
 		if(gap.days<0):
 			msg["error"]="end date must be bigger"
 			return jsonify({"msg":msg})
-	en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
+
 	else:
-		en_d=str(datetime.datetime.now()).split(" ")[0]
+		#en_d=str(datetime.datetime.now()).split(" ")[0]
+		en_d=datetime.datetime.now()
 
 	try:
 		cursor=mysql.connection.cursor()
