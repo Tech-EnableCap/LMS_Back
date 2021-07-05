@@ -1,4 +1,4 @@
-Loan ID,Tid,Employee ID,Name,Phone Number,Jun EMI,carry forward,TOTAL,Actual EMI deducted (5th),Total carry forward to next week,NBFC_loan_id,Repayment date,Actual EMI deducted (15th)
+Loan ID,Tid,Employee ID,Name,Phone Number,Jun EMI,carry forward,TOTAL,Actual EMI deducted,Total carry forward to next week,NBFC_loan_id,Repayment date,Actual EMI deducted (15th)
 LOAP02623,LOAP0262344307,2001610427,Parth Upendrakumar Patel,,"  1,536 ",  -   ,"  1,536 ",  -   ,,,2021-06-05,"  1,536 "
 LOAP02613,LOAP0261344307,2001424425,Sayan Kumar,,"  1,064 ",  -   ,"  1,064 ","  1,064 ",,,2021-06-05,  -   
 LOAP02630,LOAP0263044307,2001588974,Jitendra Singh,,"  1,294 ",  -   ,"  1,294 ","  1,294 ",,,2021-06-05,  -   

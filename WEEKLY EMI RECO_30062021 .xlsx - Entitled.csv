@@ -1,4 +1,4 @@
-Loan ID,Tid,DE ID,Name,Phone no., EMI,carry forward,TOTAL,Actual EMI deducted,Total carry forward to next week,NBFC Id,Repayment Date
+Loan ID,Tid,DE ID,Name,Phone no., EMI,carry forward,TOTAL,Actual EMI deducted,Total carry forward to next week,NBFC Id,Repayment date
 LOAN02286,LOAN0228644306,1018074,Jaspal Singh,8600091859 / 7498505648,"1,090",  -   ,"1,090","1,090",  -   ,,30-06-2021
 LOAN02291,LOAN0229144310,90126,Selvaraj,6380684171,419,419,838,419,419,,30-06-2021
 LOAN02292,LOAN0229244310,41878,B Babu,9382678892,419,  -   ,419,419,  -   ,,30-06-2021

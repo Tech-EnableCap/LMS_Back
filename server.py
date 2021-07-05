@@ -26,11 +26,11 @@ CORS(app)
 
 
 app.config['SECRET_KEY']='secretkey'
-app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
-app.config['MYSQL_USER']='tech'
-app.config['MYSQL_PASSWORD']='tech_enablecap'
-#app.config['MYSQL_USER']='root'
-#app.config['MYSQL_PASSWORD']=''
+#app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
+#app.config['MYSQL_USER']='tech'
+#app.config['MYSQL_PASSWORD']='tech_enablecap'
+app.config['MYSQL_USER']='root'
+app.config['MYSQL_PASSWORD']=''
 app.config['MYSQL_DB']='lms'
 app.config['MYSQL_DATABASE_PORT']=3306
 
@@ -83,6 +83,8 @@ def login():
 	
 	return jsonify({"msg":msg})
 
+
+############## api endpint for upload ##############
 
 @app.route("/",methods=["POST"])
 @cross_origin(supports_credentials=True)
@@ -139,6 +141,100 @@ def res():
 		except Exception as e:
 			msg["error"]=str(e)
 			return jsonify({'msg':msg})
+
+	elif('emi' in f_type):
+		d=d[f_type]
+		d=d.split(';')[1]
+		d=d.split(',')[1]
+		d=base64.b64decode(d)
+		toread=io.BytesIO()
+		toread.write(d)
+		toread.seek(0)
+		data=pd.read_csv(toread)
+		db_type=f_type.split("_")[-1]
+		data=upload_repay_once(data)
+		try:
+			cursor=mysql.connection.cursor()
+			for i in range(len(data.iloc[:])):
+				lid=data.iloc[i]['Tid']
+				p_date=data.iloc[i]['Repayment date']
+				amt=data.iloc[i]['Actual EMI deducted']
+				'''
+				amt=str(amt)
+				#amt=int(amt)
+				if ',' in amt[:]:
+					am=amt.split(",")
+					amt="".join(am)
+					try:
+						amt=int(amt)
+					except:
+						amt=int(float(amt))
+				'''
+				
+				remark=None
+				query="SELECT loan_tenure,emi_amt,repayment_type,first_inst_date,emi_amount_received,carry_f,emi_number,emi_date_flag,partner_loan_id,first_name,last_name,last_date_flag FROM upload_file WHERE transaction_id=%s;"
+				cursor.execute(query,(lid,))
+				data_all=cursor.fetchall()
+				
+				out=repay_generator(data_all,p_date,amt)
+				
+				today=str(datetime.datetime.now()).split(" ")[0]
+
+				query="UPDATE upload_file SET emi_amount_received=%s,carry_f=%s,emi_number=%s,emi_date_flag=%s,receipt_status=%s,last_date_flag=%s WHERE transaction_id=%s;"
+				cursor.execute(query,(out[0],out[1],out[2],out[3],out[5],out[10],lid))
+				query="INSERT INTO repay_tracker(transaction_id,payment_date,payment_amount,due,carry_f,remark) VALUES(%s,%s,%s,%s,%s,%s);"
+				cursor.execute(query,(lid,p_date,amt,out[4],out[1],remark))
+				query="UPDATE emi_upload_track SET "+db_type+"=%s;"
+				cursor.execute(query,(today,))
+
+			mysql.connection.commit()
+			msg["success"]="data added"
+			cursor.close()
+		except Exception as e:
+			msg["error"]=str(e)
+			print(msg)
+
+		return jsonify({"msg":msg})
+		
+		'''
+		data=upload_repay_once(data)
+		try:
+			cursor=mysql.connection.cursor()
+			for i in range(len(data.iloc[:])):
+				lid=data.iloc[i]['Tid']
+				p_date=data.iloc[i]['Repayment Date']
+				amt=data.iloc[i]['Actual EMI deducted']
+				
+				amt=str(amt)
+				#amt=int(amt)
+				if ',' in amt[:]:
+					am=amt.split(",")
+					amt="".join(am)
+					try:
+						amt=int(amt)
+					except:
+						amt=int(float(amt))
+				
+				
+				remark=None
+				query="SELECT loan_tenure,emi_amt,repayment_type,first_inst_date,emi_amount_received,carry_f,emi_number,emi_date_flag,partner_loan_id,first_name,last_name,last_date_flag FROM upload_file WHERE transaction_id=%s;"
+				cursor.execute(query,(lid,))
+				data_all=cursor.fetchall()
+				
+				out=repay_generator(data_all,p_date,amt)
+				
+
+				query="UPDATE upload_file SET emi_amount_received=%s,carry_f=%s,emi_number=%s,emi_date_flag=%s,receipt_status=%s,last_date_flag=%s WHERE transaction_id=%s;"
+				cursor.execute(query,(out[0],out[1],out[2],out[3],out[5],out[10],lid))
+				query="INSERT INTO repay_tracker(transaction_id,payment_date,payment_amount,due,carry_f,remark) VALUES(%s,%s,%s,%s,%s,%s);"
+				cursor.execute(query,(lid,p_date,amt,out[4],out[1],remark))
+			mysql.connection.commit()
+			msg["success"]="data added"
+			cursor.close()
+		except Exception as e:
+			msg["error"]=str(e)
+			return jsonify({"msg":msg})
+		'''
 
 	else:
 		d=d[f_type]
@@ -388,8 +484,8 @@ def generate_efx_report():
 			return jsonify({"msg":msg})
 
 	else:
-		#en_d=str(datetime.datetime.now()).split(" ")[0]
 		en_d=datetime.datetime.now()
+		end_date=str(en_d).split(" ")[0]
 
 	try:
 		cursor=mysql.connection.cursor()
@@ -1169,7 +1265,24 @@ def view_report_status():
 	return jsonify({"msg":msg})
 
 
+@app.route("/getemitrack",methods=["POST"])
+@cross_origin(supports_credentials=True)
+def get_emi_track():
+	msg={}
+	try:
+		cursor=mysql.connection.cursor()
+		cursor.execute("SELECT * FROM emi_upload_track")
+		data=cursor.fetchall()
+		if(len(data)<1):
+			msg['info']='no data found'
+			return jsonify({"msg":msg})
+		msg["success"]=data[0]
+		
+		cursor.close()
+	except Exception as e:
+		msg['error']=str(e)
 
+	return jsonify({"msg":msg})
 
 
 

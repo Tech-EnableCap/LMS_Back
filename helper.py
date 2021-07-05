@@ -969,7 +969,7 @@ def date_convert_efx(date):
 	out_date="".join([d for d in final_date])
 	return out_date
 
-def prepare_date(x):
+def prepare_data(x):
 	x=str(x)
 	if(x.strip()=="-"):
 		return 0
@@ -988,15 +988,26 @@ def prepare_date(x):
 		return int(x)
 
 
-def upload_repay_once():
-	data=pd.read_csv('WEEKLY EMI RECO_30062021 .xlsx - Entitled.csv')
+def date_convert_v2(date):
+	date_sp=date.split("-")[0]
+	if(len(date_sp)<4):
+		date=date_convert(date)
+		return date
+	return date
+
+
+def upload_repay_once(data):
+	#data=pd.read_csv('WEEKLY EMI RECO_30062021 .xlsx - Entitled.csv')
 	#data=data[['Transactionid','Date','AMOUNT RECEIVED']]
-	data=data[['Tid','Repayment Date','Actual EMI deducted']]
-	data["Actual EMI deducted"]=data["Actual EMI deducted"].apply(lambda x:prepare_date(x))
+	data=data[['Tid','Repayment date','Actual EMI deducted']]
+	data["Actual EMI deducted"]=data["Actual EMI deducted"].apply(lambda x:prepare_data(x))
 
 
 	data=data[data["Actual EMI deducted"]!=0]
-	data["Repayment Date"]=data["Repayment Date"].apply(lambda x:date_convert(x))
+	try:
+		data["Repayment date"]=data["Repayment date"].apply(lambda x:date_convert_v2(x))
+	except Exception as e:
+		data["Repayment date"]=data["Repayment date"]
 	data.index=range(0,len(data))
 
 	#data=data.iloc[:1053]
