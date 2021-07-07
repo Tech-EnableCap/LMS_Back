@@ -22,7 +22,7 @@ def update_status_cron():
 				return jsonify({"msg":msg})
 
 			for ti_val in ti:       
-	
+				#print(ti_val)
 				query="SELECT loan_tenure,emi_amt,repayment_type,first_inst_date,emi_amount_received,carry_f,emi_number,emi_date_flag,partner_loan_id,first_name,last_name,last_date_flag,comp_name,sanction_amount FROM upload_file WHERE transaction_id=%s;"
 				cursor.execute(query,(ti_val[0],))
 				fetch_data=cursor.fetchall()
@@ -243,6 +243,7 @@ def update_status_cron():
 			msg["data"]="success"
 		except Exception as e:
 			msg["error"]=str(e)
+			print(msg)
 		return jsonify({"msg":msg})
 
 

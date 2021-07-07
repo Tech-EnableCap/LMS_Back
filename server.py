@@ -27,13 +27,13 @@ CORS(app)
 
 app.config['SECRET_KEY']='secretkey'
 #app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
-app.config['MYSQL_HOST']='lms2.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
+app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
 app.config['MYSQL_USER']='tech'
 app.config['MYSQL_PASSWORD']='tech_enablecap'
 #app.config['MYSQL_USER']='root'
 #app.config['MYSQL_PASSWORD']='tech@enablecap'
-app.config['MYSQL_DB']='lmsTst'
-app.config['MYSQL_DATABASE_PORT']=3308
+app.config['MYSQL_DB']='lms'
+app.config['MYSQL_DATABASE_PORT']=3306
 
 mysql=MySQL(app)
 
