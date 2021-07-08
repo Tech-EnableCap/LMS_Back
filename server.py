@@ -27,7 +27,7 @@ CORS(app)
 
 app.config['SECRET_KEY']='secretkey'
 #app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
-app.config['MYSQL_HOST']='lms1.cxemph5zulpf.ap-south-1.rds.amazonaws.com'
+app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
 app.config['MYSQL_USER']='tech'
 app.config['MYSQL_PASSWORD']='tech_enablecap'
 #app.config['MYSQL_USER']='root'
@@ -1214,7 +1214,10 @@ def view_report_status():
 				count=cursor.fetchall()
 			if(l_status):
 				#query="SELECT COUNT(*) FROM chk_status WHERE (comp_name=%s AND status_up=%s);"
-				cursor.execute("SELECT COUNT(*) FROM chk_status WHERE (comp_name=%(comp)s AND status_up IN %(l_st)s)",{"comp":comp,"l_st":l_status})
+				if("all" in l_status or "ALL" in l_status or "All" in l_status):
+					cursor.execute("SELECT COUNT(*) FROM chk_status WHERE comp_name=%(comp)s",{"comp":comp})
+				else:
+					cursor.execute("SELECT COUNT(*) FROM chk_status WHERE (comp_name=%(comp)s AND status_up IN %(l_st)s)",{"comp":comp,"l_st":l_status})
 				count=cursor.fetchall()
 
 			msg["count"]=count[0][0]
@@ -1227,7 +1230,10 @@ def view_report_status():
 				cursor.execute(query,(comp,first_name,last_name,))
 			if(l_status):
 				#query="SELECT * FROM chk_status WHERE (comp_name=%s AND status_up=%s);"
-				cursor.execute("SELECT * FROM chk_status WHERE (comp_name=%(comp)s AND status_up IN %(l_st)s)",{"comp":comp,"l_st":l_status})
+				if("all" in l_status or "ALL" in l_status or "All" in l_status):
+					cursor.execute("SELECT * FROM chk_status WHERE comp_name=%(comp)s",{"comp":comp})
+				else:
+					cursor.execute("SELECT * FROM chk_status WHERE (comp_name=%(comp)s AND status_up IN %(l_st)s)",{"comp":comp,"l_st":l_status})
 				#cursor.execute(query,(comp,l_status,))
 
 		else:
@@ -1242,7 +1248,10 @@ def view_report_status():
 			if(l_status):
 				#query="SELECT * FROM chk_status WHERE (comp_name=%s AND status_up=%s) LIMIT %s,%s;"
 				#cursor.execute(query,(comp,l_status,startat,perpage,))
-				cursor.execute("SELECT * FROM chk_status WHERE (comp_name=%(comp)s AND status_up IN %(l_st)s) LIMIT %(st)s,%(end)s",{"comp":comp,"l_st":l_status,"st":startat,"end":perpage})
+				if("all" in l_status or "ALL" in l_status or "All" in l_status):
+					cursor.execute("SELECT * FROM chk_status WHERE comp_name=%(comp)s LIMIT %(st)s,%(end)s",{"comp":comp,"st":startat,"end":perpage})
+				else:
+					cursor.execute("SELECT * FROM chk_status WHERE (comp_name=%(comp)s AND status_up IN %(l_st)s) LIMIT %(st)s,%(end)s",{"comp":comp,"l_st":l_status,"st":startat,"end":perpage})
 
 		data_all=cursor.fetchall()
 		if(len(data_all)<1):
@@ -1284,6 +1293,36 @@ def get_emi_track():
 		msg['error']=str(e)
 
 	return jsonify({"msg":msg})
+
+
+@app.route("/view_report_out",methods=["POST"])
+@cross_origin(supports_credentials=True)
+def view_report_st():
+	msg={}
+	req=request.data
+	req=json.loads(req)
+	comp=req.get("comp",None)
+	try:
+		cursor=mysql.connection.cursor()
+		query="SELECT total_outstanding FROM chk_status WHERE comp_name=%s"
+		cursor.execute(query,(comp,))
+		data_all=cursor.fetchall()
+		if(len(data_all)<1):
+			msg['error']='no data found'
+			return jsonify({"msg":msg})
+
+		sum_all=0
+		for i in data_all:
+			sum_all+=int(i[0])
+		
+		msg["data"]=sum_all
+
+	except Exception as e:
+		msg['error']=str(e)
+
+	return jsonify({"msg":msg})
+
+
 
 
 
