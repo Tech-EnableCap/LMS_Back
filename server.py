@@ -945,8 +945,20 @@ def search_repay_data():
 			#msg["count"]=count
 
 		if(f_name and l_name):
-			query="SELECT * FROM master_repay WHERE (first_name=%s AND last_name=%s AND comp_name=%s)"
-			cursor.execute(query,(f_name,l_name,comp,))
+			if(pageidx=="0"):
+				query="SELECT COUNT(*) FROM master_repay WHERE (first_name=%s AND last_name=%s AND comp_name=%s)"
+				cursor.execute(query,(f_name,l_name,comp,))
+				count=cursor.fetchall()
+				msg["count"]=count[0][0]
+			if(pageidx=="-2"):
+				query="SELECT * FROM master_repay WHERE (first_name=%s AND last_name=%s AND comp_name=%s)"
+				cursor.execute(query,(f_name,l_name,comp,))
+			else:
+				perpage=20
+				startat=int(pageidx)*perpage
+				query="SELECT * FROM master_repay WHERE (first_name=%s AND last_name=%s AND comp_name=%s) LIMIT %s,%s"
+				cursor.execute(query,(f_name,l_name,comp,startat,perpage,))
+
 			data_all=cursor.fetchall()
 			if(len(data_all)<1):
 				msg["error"]="no data found based on this search"
