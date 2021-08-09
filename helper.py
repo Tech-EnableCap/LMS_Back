@@ -296,6 +296,9 @@ def state_code_mapper(state):
 	else:
 		return state_code["APO Address"]
 
+def convert_acc_num_efx(acc):
+	return "'"+str(acc)
+
 def equifax_generator(data,end_date,due_list,received_amount):
 
 	consumer_name=data['first_name']+" "+data["last_name"]
@@ -338,7 +341,9 @@ def equifax_generator(data,end_date,due_list,received_amount):
 
 	cur_member_code=pd.DataFrame(npx.array(["019FP14598"]*len(data)).reshape(len(data)),columns=["Current/New Member Code"])
 	cur_member_short_name=pd.DataFrame(npx.array(["GVRK"]*len(data)).reshape(len(data)),columns=["Current/New Member Short Name"])
-	curr_new_acc_num=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Curr/New Account No"])
+
+	#curr_new_acc_num=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Curr/New Account No"])
+	curr_new_acc_num=data['borro_bank_acc_num'].apply(lambda x:convert_acc_num_efx(x))
 	
 	acc_type=pd.DataFrame(npx.array(["'00"]*len(data)).reshape(len(data)),columns=["Account type"])
 	own_ind=pd.DataFrame(npx.array(["'01"]*len(data)).reshape(len(data)),columns=["Ownership Indicator"])
@@ -379,6 +384,24 @@ def equifax_generator(data,end_date,due_list,received_amount):
 	amt_arr=amt_arr.reshape(len(due_list),1)
 
 	amt_overdue=pd.DataFrame(amt_arr,columns=["Amt Overdue"])
+	
+	dpd=[]
+
+	tenure_missed=amt_overdue['Amt Overdue']/data['emi_amt'].apply(lambda x:int(x))
+	for i in range(len(tenure_missed)):
+		if(data.iloc[i]['repayment_type']=='Weekly'):
+			if(i>0):
+				dpd.append(int(float(tenure_missed[i]))*7)
+			else:
+				dpd.append(0)
+		else:
+			if(i>0):
+				dpd.append(int(float(tenure_missed[i]))*30)
+			else:
+				dpd.append(0)
+
+	num_days_past_due=pd.DataFrame(npx.array(dpd).reshape(len(data)),columns=["No of Days Past Due"])
+	num_days_past_due=num_days_past_due["No of Days Past Due"].apply(lambda x:str(x))
 
 	#amt_overdue.index=range(1,len(amt_overdue)+1)
 
@@ -387,7 +410,9 @@ def equifax_generator(data,end_date,due_list,received_amount):
 	amt_overdue=amt_overdue["Amt Overdue"].apply(lambda x:str(x))
 
 
-	num_days_past_due=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["No of Days Past Due"])
+
+
+	
 	old_mbr=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Old Mbr Code"])
 	old_mbr_st_name=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Old Mbr Short Name"])
 	old_acc_num=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Old Acc No"])
@@ -440,6 +465,7 @@ def equifax_generator(data,end_date,due_list,received_amount):
 		'resi_addr_ln1':'Address 1',
 		'state':'State Code 1',
 		'pincode':'PIN Code1',
+		'borro_bank_acc_num':'Curr/New Account No',
 		'first_inst_date':'Date Opened',
 		'end':'Date Closed',
 		0:'Current balance',
@@ -503,22 +529,47 @@ def helper_upload(data,cursor,db_type,file_type="upload_file"):
 	c=0
 	dic={}
 	if(file_type=="upload_file"):
-		for length in range(len(data)):
-			
-			for i,j in enumerate(data.columns):
-				dic[j]=data.iloc[length][i]
-			kk=list(dic.values())
-			check="SELECT * FROM upload_file WHERE transaction_id=%s";
-			cursor.execute(check,(kk[0],))
+		if(db_type=="Entitle"):
+			for length in range(len(data)):
+				for i,j in enumerate(data.columns):
+					dic[j]=data.iloc[length][i]
+				kk=list(dic.values())
+				check="SELECT * FROM upload_file WHERE transaction_id=%s";
+				cursor.execute(check,(kk[0],))
 
-			if(cursor.rowcount==0):
-				cursor.execute('''INSERT INTO upload_file VALUES(%s,%s,%s,%s,%s
+				if(cursor.rowcount==0):
+					cursor.execute('''INSERT INTO upload_file VALUES(%s,%s,%s,%s,%s
 					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
 					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
-					%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk+[0,0,0,kk[40],'ongoing','2021-01-01',db_type,'']))
-			
-			dic={}
+					%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk+[0,0,0,kk[40],'ongoing','2021-01-01',db_type,'','','','','','','']))
+				
+				dic={}
+				kk=[]
+		else:
 			kk=[]
+			for length in range(len(data)):
+				
+				for i,j in enumerate(data.columns[:54]):
+					kk.append(data.iloc[length][i])
+				
+				kk.extend([0,0,0,kk[40],'ongoing','2021-01-01',db_type,''])
+
+				for i,j in enumerate(data.columns[54:]):
+					kk.append(data.iloc[length][j])
+
+				check="SELECT * FROM upload_file WHERE transaction_id=%s";
+				cursor.execute(check,(kk[0],))
+
+
+				if(cursor.rowcount==0):
+					cursor.execute('''INSERT INTO upload_file VALUES(%s,%s,%s,%s,%s
+					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+					,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+					%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(kk))
+
+				kk=[]
+
+
 	elif(file_type=="master_repay"):
 		for length in range(len(data)):
 			for i,j in enumerate(data.columns):
@@ -819,8 +870,8 @@ def repay_generator(data,p_date,amt,mode="upload"):
 			return [0,0]
 	total_loan_given=emi*loan_tenure
 	residual=total_loan_given-payed_total
-	if(int(amt)>residual):
-		return [0]
+	#if(int(amt)>residual):
+		#return [0]
 
 	d_1=generate_emi_dates(loan_type,loan_tenure,first_emi)
 	d_1.append(datetime.datetime.strptime(flag_date,"%Y-%m-%d"))
@@ -999,6 +1050,7 @@ def date_convert_v2(date):
 def upload_repay_once(data):
 	#data=pd.read_csv('WEEKLY EMI RECO_30062021 .xlsx - Entitled.csv')
 	#data=data[['Transactionid','Date','AMOUNT RECEIVED']]
+	print(data)
 	data=data[['Tid','Repayment date','Actual EMI deducted']]
 	data["Actual EMI deducted"]=data["Actual EMI deducted"].apply(lambda x:prepare_data(x))
 

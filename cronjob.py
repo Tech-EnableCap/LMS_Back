@@ -39,6 +39,7 @@ def update_status_cron():
 				comp_name=fetch_data[0][12]
 				sanction_amount=fetch_data[0][13]
 				emi_amount_received=fetch_data[0][4]
+				total_installments_paid=int(float(int(emi_amount_received)/int(emi_amt)))
 				#fullname=f_name+" "+l_name
 				emi_dates=generate_emi_dates(loan_type,loan_tenure,first_emi_date)
 				query="SELECT payment_date,payment_amount,due,carry_f,remark FROM repay_tracker WHERE transaction_id=%s ORDER BY payment_date;"
@@ -59,12 +60,19 @@ def update_status_cron():
 
 				check_dates=[i for i in all_history.keys() if i<=date]
 
-				
+				#print(ti_val[0])
 				if(len(check_dates)==0):
 					total_outstanding=loan_tenure*int(emi_amt)
-					final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,0,sanction_amount,0,emi_amt,total_outstanding,comp_name,date_counter,"notstarted",red_flag]
+					final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,0,sanction_amount,0,emi_amt,total_outstanding,comp_name,date_counter,"notstarted",red_flag,0,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 
 				else:
+
+					counter_r=0
+					for i in check_dates[::-1]:
+						amount_paid=int(all_history[i][1])
+						if(amount_paid>0 or int(all_history[i][3])<=0):
+							break
+						counter_r+=1
 
 					emi_dates_prev=[i for i in all_history.keys() if all_history[i][6]=="ed" and i<=date]
 
@@ -83,6 +91,8 @@ def update_status_cron():
 
 						total_outstanding=(loan_tenure*int(emi_amt))-int(emi_amount_received)
 
+					
+
 						if(date>emi_dates[-1]):
 
 							if(total_outstanding==0):
@@ -97,14 +107,14 @@ def update_status_cron():
 							elif(total_outstanding<0):
 								status="emi_closed_with_advance"
 
-							final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+							final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 
 						else:
 
 							if(due==0 and int(amount_paid)>0):
 
 								status="ontime,ongoing"
-								final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+								final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 								
 							if(due>0):
 
@@ -113,15 +123,25 @@ def update_status_cron():
 									date_counter=1
 								else:
 									date_counter=int(float(int(due)/int(emi_amt)))
-								final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+								final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 
 							if(due<0):
 
 								status="advance,ongoing"
-								final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,0,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+								final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 
 					else:
-		
+
+
+						counter_r=0
+						for i in check_dates[::-1]:
+							amount_paid=int(all_history[i][1])
+							if(amount_paid>0 or int(all_history[i][3])<=0):
+								break
+							counter_r+=1
+
+						
+						counter=0
 						for i in check_dates[::-1]:
 							flag_date_ct=0
 							amount_paid=int(all_history[i][1])
@@ -130,7 +150,7 @@ def update_status_cron():
 								if(amount_paid>0):
 									last_date_payed=str(i).split(" ")[0]
 								else:
-									for lt_date in emi_dates_prev[::-1]:
+									for lt_date in check_dates[::-1]:
 										last_date_amt_paid=int(all_history[lt_date][1])
 										if(last_date_amt_paid)>0:
 											last_date_payed=str(lt_date).split(" ")[0]
@@ -146,6 +166,8 @@ def update_status_cron():
 
 						total_outstanding=(loan_tenure*int(emi_amt))-int(emi_amount_received)
 
+
+
 						#if(ti_val[0]=="LOAN0228644306"):
 							#print(due)
 
@@ -156,11 +178,12 @@ def update_status_cron():
 								status="emi_closed,payment_received"
 
 								if(int(amount_paid)==0):
-									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,last_date_amt_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,last_date_amt_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 								else:
-									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 
 							elif(total_outstanding>0):
+
 								status="emi_closed,not_paid"
 								red_flag="red"
 								if(due<int(emi_amt)):
@@ -169,29 +192,29 @@ def update_status_cron():
 									date_counter=int(float(int(due)/int(emi_amt)))
 
 								if(int(amount_paid)==0):
-									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,last_date_amt_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,last_date_amt_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 								else:
-									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 
 							elif(total_outstanding<0):
 
 								status="emi_closed_with_advance"
 								if(int(amount_paid)==0):
-									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,last_date_amt_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,last_date_amt_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 								else:
-									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 	
 						else:
 
 							if(due==0 and int(amount_paid)>0):
 
 								status="ontime,ongoing"
-								final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+								final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 
 							if(due==0 and int(amount_paid)==0):
 
 								status="ontime,ongoing"
-								final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,last_date_amt_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+								final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,last_date_amt_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 
 							if(due>0 and int(amount_paid)>0):
 
@@ -200,7 +223,7 @@ def update_status_cron():
 									date_counter=1
 								else:
 									date_counter=int(float(int(due)/int(emi_amt)))
-								final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+								final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 
 							if(due>0 and int(amount_paid)==0):
 
@@ -209,32 +232,35 @@ def update_status_cron():
 									date_counter=1
 								else:
 									date_counter=int(float(int(due)/int(emi_amt)))
-								final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,last_date_amt_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+								if(date_counter<3):
+									status="overdue,ongoing"
+								final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,last_date_amt_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 
 							if(due<0):
 								status="advance,ongoing"
 
 								if(int(amount_paid)==0):
-									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,last_date_amt_paid,sanction_amount,0,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,last_date_amt_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 								else:
-									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,0,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
+									final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,amount_paid,sanction_amount,due,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag,counter_r,emi_amount_received,loan_tenure,total_installments_paid,loan_type,first_emi_date,emi_dates[-1]]
 
 							
 							#if(due<0 and int(amount_paid)==0):
 								#status="advance,halted"
 								#final_out_per_person=[ti_val[0],f_name,l_name,last_date_payed,last_date_amt_paid,sanction_amount,0,emi_amt,total_outstanding,comp_name,date_counter,status,red_flag]
 
-
+				#print(final_out_per_person)
+				
 				query_check="SELECT * FROM chk_status WHERE transaction_id=%s"
 				cursor.execute(query_check,(ti_val[0],))
 				get_data=cursor.fetchall()
 				if(len(get_data)<1):
-					cursor.execute('''INSERT INTO chk_status VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(final_out_per_person))
+					cursor.execute('''INSERT INTO chk_status VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',(final_out_per_person))
 					upload_file_update_query="UPDATE upload_file SET payment_status=%s where transaction_id=%s"
 					cursor.execute(upload_file_update_query,(final_out_per_person[11],final_out_per_person[0]))
 				else:
-					up_query="UPDATE chk_status SET last_date_paid=%s,amt_paid_last=%s,overdue_amount=%s,total_outstanding=%s,no_of_payment_period_missed=%s,status_up=%s,flag=%s WHERE transaction_id=%s"
-					cursor.execute(up_query,(final_out_per_person[3],final_out_per_person[4],final_out_per_person[6],final_out_per_person[8],final_out_per_person[10],final_out_per_person[11],final_out_per_person[12],final_out_per_person[0]))
+					up_query="UPDATE chk_status SET last_date_paid=%s,amt_paid_last=%s,overdue_amount=%s,total_outstanding=%s,no_of_payment_period_missed=%s,status_up=%s,flag=%s,consecutive_period_missed=%s,amount_received=%s,total_number_of_installment=%s,number_of_installments_paid=%s,repayment_type=%s,first_installment_date=%s,last_installment_date=%s WHERE transaction_id=%s"
+					cursor.execute(up_query,(final_out_per_person[3],final_out_per_person[4],final_out_per_person[6],final_out_per_person[8],final_out_per_person[10],final_out_per_person[11],final_out_per_person[12],final_out_per_person[13],final_out_per_person[14],final_out_per_person[15],final_out_per_person[16],final_out_per_person[17],final_out_per_person[18],str(final_out_per_person[19]).split(" ")[0],final_out_per_person[0]))
 					upload_file_update_query="UPDATE upload_file SET payment_status=%s where transaction_id=%s"
 					cursor.execute(upload_file_update_query,(final_out_per_person[11],final_out_per_person[0]))
 

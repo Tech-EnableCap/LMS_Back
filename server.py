@@ -26,8 +26,8 @@ CORS(app)
 
 
 app.config['SECRET_KEY']='secretkey'
-#app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
-app.config['MYSQL_HOST']='lms.cxemph5zulpf.ap-south-1.rds.amazonaws.com'
+app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
+#app.config['MYSQL_HOST']='lms.cxemph5zulpf.ap-south-1.rds.amazonaws.com'
 app.config['MYSQL_USER']='tech'
 app.config['MYSQL_PASSWORD']='tech_enablecap'
 #app.config['MYSQL_USER']='root'
@@ -154,6 +154,7 @@ def res():
 		data=pd.read_csv(toread)
 		db_type=f_type.split("_")[-1]
 		data=upload_repay_once(data)
+		print(data)
 		try:
 			cursor=mysql.connection.cursor()
 			for i in range(len(data.iloc[:])):
@@ -178,7 +179,13 @@ def res():
 				data_all=cursor.fetchall()
 				
 				out=repay_generator(data_all,p_date,amt)
-				
+
+				#print(lid)
+				#print("//////////")
+				#print(out)
+				 
+				if(lid=='LOAN0237344316'):
+					print(out)
 				today=str(datetime.datetime.now()).split(" ")[0]
 
 				query="UPDATE upload_file SET emi_amount_received=%s,carry_f=%s,emi_number=%s,emi_date_flag=%s,receipt_status=%s,last_date_flag=%s WHERE transaction_id=%s;"
@@ -246,10 +253,11 @@ def res():
 		toread.write(d)
 		toread.seek(0)
 		data=pd.read_excel(toread)
-		data=data.fillna("N/A")
 		col_names=data.iloc[0]
 		data=data[1:]
 		data.columns=col_names
+		data=data.dropna(axis=0,subset=['transactionid'])
+		data=data.fillna("N/A")
 		#d1=master_repay_helper(data)
 		#print(d1)
 		#print("=================")
@@ -271,6 +279,8 @@ def res():
 			msg["msg"]="Success"
 		except Exception as e:
 			msg["error"]=str(e)
+			#cursor.close()
+			print(e)
 			return jsonify({'msg':msg})
 		
 
@@ -507,10 +517,10 @@ def generate_efx_report():
 
 		if(pageidx=="-2"):
 			if(lid):
-				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s AND receipt_status=%(ong)s)",{"tid":lid,"comp":comp,"ong":r_status})
+				cursor.execute("SELECT * FROM upload_file WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
 			else:
-				query="SELECT * FROM upload_file WHERE (comp_name=%s AND (receipt_status=%s AND (first_name=%s AND last_name=%s OR "+typ+">=%s AND "+typ+"<=%s)));"
-				cursor.execute(query,(comp,r_status,first_name,last_name,st_date,end_date,))
+				query="SELECT * FROM upload_file WHERE (comp_name=%s AND (first_name=%s AND last_name=%s OR "+typ+">=%s AND "+typ+"<=%s));"
+				cursor.execute(query,(comp,first_name,last_name,st_date,end_date,))
 
 		else:
 
@@ -597,7 +607,7 @@ def generate_efx_report():
 		
 	except Exception as e:
 		msg['error']=str(e)
-		print(data.iloc[i]["transaction_id"])
+		print(msg)
 
 	return jsonify({"msg":msg})
 
@@ -1275,6 +1285,8 @@ def view_report_status():
 		data['overdue_amount']=data['overdue_amount'].apply(lambda x:str(x))
 		data['total_outstanding']=data['total_outstanding'].apply(lambda x:str(x))
 		data['no_of_payment_period_missed']=data['no_of_payment_period_missed'].apply(lambda x:str(x))
+		data['total_number_of_installment']=data['total_number_of_installment'].apply(lambda x:str(x))
+		data['number_of_installments_paid']=data['number_of_installments_paid'].apply(lambda x:str(x))
 		body=[list(data.iloc[i].values) for i in range(len(data))]
 		cl_name=list(data.columns)
 		msg["clName"]=cl_name
