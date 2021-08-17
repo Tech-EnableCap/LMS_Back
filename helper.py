@@ -14,9 +14,16 @@ from dateutil.relativedelta import *
 
 
 gender={
-	"Female":"'01",
-	"Male":"'02",
-	"Transgender":"'03"
+	"Female":"1",
+	"Male":"2",
+	"Transgender":"3"
+}
+
+paymt_freq={
+	"Weekly":"'01",
+	"Fortnightly":"'02",
+	"Monthly":"'03",
+	"Quarterly":"'04"
 }
 
 state_code={
@@ -290,6 +297,9 @@ def disbursal_mis_process(data):
 def gender_mapper(gen):
 	return gender[gen]
 
+def pymt_mapper(pymt):
+	return paymt_freq[pymt]
+
 def state_code_mapper(state):
 	if state in state_code:
 		return state_code[state]
@@ -299,7 +309,7 @@ def state_code_mapper(state):
 def convert_acc_num_efx(acc):
 	return "'"+str(acc)
 
-def equifax_generator(data,end_date,due_list,received_amount):
+def equifax_generator(data,end_date,due_list,received_amount,last_date):
 
 	consumer_name=data['first_name']+" "+data["last_name"]
 	consumer_name=pd.DataFrame(consumer_name,columns=["Consumer name"])
@@ -352,7 +362,9 @@ def equifax_generator(data,end_date,due_list,received_amount):
 	date_op=date_op.apply(lambda x:date_convert_efx(x))
 	date_clsd=master_repay_helper(data,dtype="other")
 	date_clsd=date_clsd.apply(lambda x:date_convert_efx(x))
-	date_last_pay=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Date of Last Payment"])
+	#date_last_pay=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Date of Last Payment"])
+
+	date_last_pay=last_date.apply(lambda x:date_convert_efx(x))
 
 	high_cred=data["applied_amount"]
 	actual_emi=data["loan_tenure"].apply(lambda x:int(x))*data["emi_amt"].apply(lambda x:int(x))
@@ -433,7 +445,7 @@ def equifax_generator(data,end_date,due_list,received_amount):
 	total_wt_amt=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Written- off Amount (Total)"])
 	wt_principal=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Written- off Principal Amount"])
 	settle_amt=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Settlement Amt"])
-	payment_frequency=data["repayment_type"]
+	payment_frequency=data["repayment_type"].apply(lambda x:pymt_mapper(x))
 	frequency=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Frequency"])
 	act_payment_amt=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Actual Payment Amt"])
 	occupation=pd.DataFrame(npx.array(["'01"]*len(data)).reshape(len(data)),columns=["Occupation Code"])
@@ -453,7 +465,7 @@ def equifax_generator(data,end_date,due_list,received_amount):
 		curr_new_acc_num,acc_type,own_ind,date_op,date_last_pay,date_clsd,date_reported,high_cred,current_bal,amt_overdue,
 		num_days_past_due,old_mbr,old_mbr_st_name,old_acc_num,old_acc_type,old_ownership_ind,suit_filed,wt_off_status,
 		asset_classification,val_coll,types_col,credit_lim,cash_lim,rate_of_int,repay_ten,emi_amt,total_wt_amt,
-		wt_principal,settle_amt,payment_frequency,frequency,act_payment_amt,occupation,income,net_gr_income_ind,
+		wt_principal,settle_amt,payment_frequency,act_payment_amt,occupation,income,net_gr_income_ind,
 		ann_income_ind],axis=1)
 
 	df=df.rename({
@@ -469,6 +481,7 @@ def equifax_generator(data,end_date,due_list,received_amount):
 		'first_inst_date':'Date Opened',
 		'end':'Date Closed',
 		0:'Current balance',
+		'last_date_flag':'Date of Last Payment',
 		'applied_amount':'High Credit/Sanctioned Amt',
 		"repayment_type":"Payment Frequency",
 		"annual_income":"income"

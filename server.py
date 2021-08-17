@@ -26,8 +26,8 @@ CORS(app)
 
 
 app.config['SECRET_KEY']='secretkey'
-app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
-#app.config['MYSQL_HOST']='lms.cxemph5zulpf.ap-south-1.rds.amazonaws.com'
+#app.config['MYSQL_HOST']='lms1.cp0iwsjv1k3d.ap-south-1.rds.amazonaws.com'
+app.config['MYSQL_HOST']='lms.cxemph5zulpf.ap-south-1.rds.amazonaws.com'
 app.config['MYSQL_USER']='tech'
 app.config['MYSQL_PASSWORD']='tech_enablecap'
 #app.config['MYSQL_USER']='root'
@@ -154,7 +154,7 @@ def res():
 		data=pd.read_csv(toread)
 		db_type=f_type.split("_")[-1]
 		data=upload_repay_once(data)
-		print(data)
+		#print(data)
 		try:
 			cursor=mysql.connection.cursor()
 			for i in range(len(data.iloc[:])):
@@ -184,8 +184,8 @@ def res():
 				#print("//////////")
 				#print(out)
 				 
-				if(lid=='LOAN0237344316'):
-					print(out)
+				#if(lid=='LOAN0237344316'):
+					#print(out)
 				today=str(datetime.datetime.now()).split(" ")[0]
 
 				query="UPDATE upload_file SET emi_amount_received=%s,carry_f=%s,emi_number=%s,emi_date_flag=%s,receipt_status=%s,last_date_flag=%s WHERE transaction_id=%s;"
@@ -595,7 +595,7 @@ def generate_efx_report():
 
 
 		#print(due_list)
-		data=equifax_generator(data,end_date,due_list,received_amount)
+		data=equifax_generator(data,end_date,due_list,received_amount,data['last_date_flag'])
 		data.index=range(1,len(data)+1)
 		body=[list(data.iloc[i].values) for i in range(len(data))]
 		cl_name=list(data.columns)
@@ -1216,8 +1216,8 @@ def view_report_status():
 	last_name=req.get("lname",None)
 	comp=req.get("comp",None)
 	l_status=req.get("loan_status",None)
-	if(l_status):
-		l_status=l_status.split(" ")
+	#if(l_status):
+		#l_status=l_status.split(" ")
 
 	try:
 		cursor=mysql.connection.cursor()
@@ -1285,8 +1285,8 @@ def view_report_status():
 		data['overdue_amount']=data['overdue_amount'].apply(lambda x:str(x))
 		data['total_outstanding']=data['total_outstanding'].apply(lambda x:str(x))
 		data['no_of_payment_period_missed']=data['no_of_payment_period_missed'].apply(lambda x:str(x))
-		data['total_number_of_installment']=data['total_number_of_installment'].apply(lambda x:str(x))
-		data['number_of_installments_paid']=data['number_of_installments_paid'].apply(lambda x:str(x))
+		#data['total_number_of_installment']=data['total_number_of_installment'].apply(lambda x:str(x))
+		#data['number_of_installments_paid']=data['number_of_installments_paid'].apply(lambda x:str(x))
 		body=[list(data.iloc[i].values) for i in range(len(data))]
 		cl_name=list(data.columns)
 		msg["clName"]=cl_name
