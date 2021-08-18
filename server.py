@@ -1285,8 +1285,8 @@ def view_report_status():
 		data['overdue_amount']=data['overdue_amount'].apply(lambda x:str(x))
 		data['total_outstanding']=data['total_outstanding'].apply(lambda x:str(x))
 		data['no_of_payment_period_missed']=data['no_of_payment_period_missed'].apply(lambda x:str(x))
-		#data['total_number_of_installment']=data['total_number_of_installment'].apply(lambda x:str(x))
-		#data['number_of_installments_paid']=data['number_of_installments_paid'].apply(lambda x:str(x))
+		data['total_number_of_installment']=data['total_number_of_installment'].apply(lambda x:str(x))
+		data['number_of_installments_paid']=data['number_of_installments_paid'].apply(lambda x:str(x))
 		body=[list(data.iloc[i].values) for i in range(len(data))]
 		cl_name=list(data.columns)
 		msg["clName"]=cl_name
