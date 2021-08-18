@@ -361,7 +361,7 @@ def equifax_generator(data,end_date,due_list,received_amount,last_date):
 	date_op=data["first_inst_date"].apply(lambda x:str(x).split(" ")[0])
 	date_op=date_op.apply(lambda x:date_convert_efx(x))
 	date_clsd=master_repay_helper(data,dtype="other")
-	date_clsd=date_clsd.apply(lambda x:date_convert_efx(x))
+	date_clsd=date_clsd.apply(lambda x:closed_date_efx(x,end_date))
 	#date_last_pay=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Date of Last Payment"])
 
 	date_last_pay=last_date.apply(lambda x:date_convert_efx(x))
@@ -453,7 +453,7 @@ def equifax_generator(data,end_date,due_list,received_amount,last_date):
 	net_gr_income_ind=pd.DataFrame(npx.array(["N"]*len(data)).reshape(len(data)),columns=["Net/Gross Income Indicator"])
 	ann_income_ind=pd.DataFrame(npx.array(["A"]*len(data)).reshape(len(data)),columns=["Monthly/Annual Income Indicator"])
 
-	date_reported=pd.DataFrame(npx.array([" "]*len(data)).reshape(len(data)),columns=["Date Reported"])
+	date_reported=pd.DataFrame(npx.array([date_convert_efx(end_date)]*len(data)).reshape(len(data)),columns=["Date Reported"])
 
 
 	df=pd.concat([consumer_name,dob,gender,incom_tax_id,passport_num,
@@ -1032,6 +1032,25 @@ def date_convert_efx(date):
 		final_date.append(d)
 	out_date="".join([d for d in final_date])
 	return out_date
+
+
+def closed_date_efx(date,end_date):
+	if(datetime.datetime.strptime(date,"%Y-%m-%d")<=datetime.datetime.strptime(end_date,"%Y-%m-%d")):
+		date_ff=date.split("-")
+		list_date=date_ff[::-1]
+		final_date=[]
+		for i in range(len(list_date)):
+			if i==0:
+				d="'"+list_date[i]
+			else:
+				d=list_date[i]
+			final_date.append(d)
+		out_date="".join([d for d in final_date])
+		return out_date
+	else:
+		return ''
+
+
 
 def prepare_data(x):
 	x=str(x)
