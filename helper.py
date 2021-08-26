@@ -322,7 +322,7 @@ def state_code_mapper(state):
 def convert_acc_num_efx(acc):
 	return "'"+str(acc)
 
-def equifax_generator(data,end_date,due_list,received_amount,last_date):
+def equifax_generator(data,end_date,due_list,received_amount,last_date,emi_due):
 
 	consumer_name=data['first_name']+" "+data["last_name"]
 	consumer_name=pd.DataFrame(consumer_name,columns=["Consumer name"])
@@ -413,12 +413,15 @@ def equifax_generator(data,end_date,due_list,received_amount,last_date):
 
 	amt_overdue=pd.DataFrame(amt_arr,columns=["Amt Overdue"])
 
-	#due_emi_arr=npx.array(emi_due)
-	#due_emi_arr=due_emi_arr.reshape(len(emi_due),1)
+	######### equifax #########
 
-	#no_of_emi_due=pd.DataFrame(due_emi_arr,columns=["No of EMI Due"])
-	#no_of_emi_due=no_of_emi_due["No of EMI Due"].apply(lambda x:str(x))
-	#print(no_of_emi_due)
+	due_emi_arr=npx.array(emi_due)
+	due_emi_arr=due_emi_arr.reshape(len(emi_due),1)
+
+	no_of_emi_due=pd.DataFrame(due_emi_arr,columns=["No of EMI Due"])
+	no_of_emi_due=no_of_emi_due["No of EMI Due"].apply(lambda x:str(x))
+	
+	###########################
 	
 	dpd=[]
 
@@ -489,9 +492,9 @@ def equifax_generator(data,end_date,due_list,received_amount,last_date):
 		num_days_past_due,old_mbr,old_mbr_st_name,old_acc_num,old_acc_type,old_ownership_ind,suit_filed,wt_off_status,
 		asset_classification,val_coll,types_col,credit_lim,cash_lim,rate_of_int,repay_ten,emi_amt,total_wt_amt,
 		wt_principal,settle_amt,payment_frequency,act_payment_amt,occupation,income,net_gr_income_ind,
-		ann_income_ind],axis=1)
+		ann_income_ind,no_of_emi_due],axis=1)
 
-	#df['Amt Overdue']=npx.where(df['No of EMI Due'].apply(lambda x:int(x))<=1,'0',df['Amt Overdue'])
+	df['Amt Overdue']=npx.where(df['No of EMI Due'].apply(lambda x:int(x))<=1,'0',df['Amt Overdue'])
 
 	df=df.rename({
 		'dob':'Date of Birth',
