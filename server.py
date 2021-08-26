@@ -540,6 +540,7 @@ def generate_efx_report():
 		data=pd.DataFrame(data_all,columns=cols)
 		received_amount=[]
 		due_list=[]
+		no_emi_due=[]
 		for i in range(len(data.iloc[:])):
 			r_amt=0
 			due_data=0
@@ -595,6 +596,20 @@ def generate_efx_report():
 
 
 		#print(due_list)
+			'''
+			emi_dates=generate_emi_dates(data.iloc[i]['repayment_type'],int(data.iloc[i]['loan_tenure']),data.iloc[i]['first_inst_date'])
+			emi_d=[j for j in emi_dates if j<=datetime.datetime.strptime(end_date,"%Y-%m-%d")]
+			tot_amt=len(emi_d)*int(data.iloc[i]["emi_amt"])
+			rec_amt=data.iloc[i]["emi_amount_received"]
+			tot_due=tot_amt-int(rec_amt)
+			due_till=int(float(int(tot_due)/int(data.iloc[i]["emi_amt"])))
+			if(due_till<0):
+				no_emi_due.append(0)
+			else:
+				no_emi_due.append(due_till)
+			print(no_emi_due)
+			'''
+
 		data=equifax_generator(data,end_date,due_list,received_amount,data['last_date_flag'])
 		data.index=range(1,len(data)+1)
 		body=[list(data.iloc[i].values) for i in range(len(data))]
@@ -737,7 +752,7 @@ def expt():
 		data=pd.DataFrame(data_all,columns=cols)
 		data.index=range(1,len(data)+1)
 		#######
-		final_data=bank_upload_process(data=data)
+		final_data=bank_upload_process(data=data,type_comp=comp)
 		body=[list(final_data.iloc[i].values) for i in range(len(final_data))]
 		cl_name=list(final_data.columns)
 		msg["clName"]=cl_name

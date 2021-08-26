@@ -284,11 +284,24 @@ def disbursal_mis_process(data):
 	pre_emi_days_dmis=pre_emi_days_dmis['pre_emi_days'].apply(lambda x:str(x))
 	approval_date_dmis=approval_date_dmis.apply(lambda x:str(x))
 
+	d_1=[]
+	for i in range(len(data)):
+		d_1.append(date_convert(generate_emi_dates(data.iloc[i]['repayment_type'],int(data.iloc[i]['loan_tenure']),data.iloc[i]['first_inst_date'])[-1]))
+
+	d_1_arr=npx.array(d_1)
+	d_1_arr=d_1_arr.reshape(len(d_1),1)
+
+	end_date=pd.DataFrame(d_1_arr,columns=["EMI End Date"])
+	end_date.index=range(1,len(end_date)+1)
+
+	#no_of_emi_due=pd.DataFrame(due_emi_arr,columns=["No of EMI Due"])
+	#no_of_emi_due=no_of_emi_due["No of EMI Due"].apply(lambda x:str(x))
+
 	final_data=pd.concat([transaction_id_dmis,partnet_loan_id_dmis,disburse_date_dmis,
               first_name_dmis,last_name_dmis,applied_amount_dmis,net_disbur_amt_dmis,
              loan_tenure_dmis,repayment_type_dmis,emi_amt_dmis,pre_emi_int_dmis,
              pre_emi_as_per_ena_dims,pre_emi_ec_share_dims,pre_emi_entitled_share_dmis,pre_emi_days_dmis,disc,approval_date_dmis,supposed_disb_date_dmis,emi_starting_date_dmis,
-             processing_fees_dims,interest_rate_dmis,entt_interest_rate_dmis,emw_interest_rate_dmis,
+             end_date,processing_fees_dims,interest_rate_dmis,entt_interest_rate_dmis,emw_interest_rate_dmis,
              ena_share_per_emi_dims,entt_shared_per_emi_dims,eq_score,risk_cat],axis=1)
 
 	final_data=final_data.fillna("N/A")
@@ -315,6 +328,9 @@ def equifax_generator(data,end_date,due_list,received_amount,last_date):
 	consumer_name=pd.DataFrame(consumer_name,columns=["Consumer name"])
 	dob=data["dob"].apply(lambda x:str(x).split(" ")[0])
 	dob=dob.apply(lambda x:date_convert_efx(x))
+
+	
+
 
 	gender=data["gender"].apply(lambda x:gender_mapper(x))
 	incom_tax_id=data["appl_pan"]
@@ -396,6 +412,13 @@ def equifax_generator(data,end_date,due_list,received_amount,last_date):
 	amt_arr=amt_arr.reshape(len(due_list),1)
 
 	amt_overdue=pd.DataFrame(amt_arr,columns=["Amt Overdue"])
+
+	#due_emi_arr=npx.array(emi_due)
+	#due_emi_arr=due_emi_arr.reshape(len(emi_due),1)
+
+	#no_of_emi_due=pd.DataFrame(due_emi_arr,columns=["No of EMI Due"])
+	#no_of_emi_due=no_of_emi_due["No of EMI Due"].apply(lambda x:str(x))
+	#print(no_of_emi_due)
 	
 	dpd=[]
 
@@ -468,6 +491,8 @@ def equifax_generator(data,end_date,due_list,received_amount,last_date):
 		wt_principal,settle_amt,payment_frequency,act_payment_amt,occupation,income,net_gr_income_ind,
 		ann_income_ind],axis=1)
 
+	#df['Amt Overdue']=npx.where(df['No of EMI Due'].apply(lambda x:int(x))<=1,'0',df['Amt Overdue'])
+
 	df=df.rename({
 		'dob':'Date of Birth',
 		'gender':'Gender',
@@ -489,16 +514,29 @@ def equifax_generator(data,end_date,due_list,received_amount,last_date):
 	return df
 
 
-def bank_upload_process(data):
+
+def bank_upload_acc_process(acc):
+	final=[]
+	for i,j in enumerate(acc):
+	    if i==0:
+	        d="'"+j
+	    else:
+	        d=j
+	    final.append(d)
+	return "".join([i for i in final])
+
+
+
+def bank_upload_process(data,type_comp="Enablecap"):
 	t_id=data['transaction_id']
 	partner_l_id=data['partner_loan_id']
-	pymt_prod_type_code=pd.DataFrame(['pab_vendor']*len(data),columns=['pymt_prod_type_code'])
+	pymt_prod_type_code=pd.DataFrame(['PAB_VENDOR']*len(data),columns=['pymt_prod_type_code'])
 	pymt_prod_type_code.index=range(1,len(t_id)+1)
 	debt_acc_num=pd.DataFrame(['694705602523']*len(data),columns=['debt_acc_num'])
 	debt_acc_num.index=range(1,len(t_id)+1)
 	bnf_name=data['first_name']+" "+data["last_name"]
 	bnf_name=pd.DataFrame(bnf_name,columns=['bnf_name'])
-	bene_acc_num=data['borro_bank_acc_num']
+	bene_acc_num=data['borro_bank_acc_num'].apply(lambda x:bank_upload_acc_process(x))
 	bene_ifsc=data['borro_bank_ifsc']
 	pymt_mode=bene_ifsc.apply(lambda x:ifsc(x))
 	bene_ifsc=pd.DataFrame(bene_ifsc.values,columns=['bene_ifsc'])
@@ -510,11 +548,23 @@ def bank_upload_process(data):
 	credit=pd.DataFrame(['loan from enablecap']*len(data),columns=['credit'])
 	credit.index=range(1,len(t_id)+1)
 	mob=data['appl_phone']
-	email=pd.DataFrame(['finance@enablecap.in']*len(data),columns=['email'])
+
+	if(type_comp=="Enablecap"):
+		email=pd.DataFrame(['finance@enablecap.in']*len(data),columns=['email'])
+	else:
+		email=pd.DataFrame(['admin@entitled.co.in']*len(data),columns=['email'])
 	email.index=range(1,len(t_id)+1)
+
 	remark=bnf_name.copy()
 	remark.columns=['remark']
-	pymt_date=data['disburse_date'].apply(lambda x:handle_bank_upload_date_structure(x))
+
+	if(type_comp=="Enablecap"):
+		pymt_date=data['disburse_date'].apply(lambda x:handle_bank_upload_date_structure(x))
+	else:
+		pymt_date=pd.DataFrame(npx.array([datetime.datetime.now()]*len(data)).reshape(len(data)),columns=["pymt_date"])
+		pymt_date=pymt_date["pymt_date"].apply(lambda x:handle_bank_upload_date_structure(x))
+		pymt_date.index=range(1,len(t_id)+1)
+
 	bank_up_f=pd.concat([t_id,partner_l_id,pymt_prod_type_code,pymt_mode,debt_acc_num,bnf_name,
              bene_acc_num,bene_ifsc,amt,debit_narr,credit,mob,email,remark,pymt_date],axis=1)
 	bank_up_f=bank_up_f.rename({'borro_bank_acc_num':'bene_acc_no','net_disbur_amt':'amount','appl_pan':'debit_narr',
