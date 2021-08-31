@@ -494,7 +494,7 @@ def equifax_generator(data,end_date,due_list,received_amount,last_date,emi_due):
 		wt_principal,settle_amt,payment_frequency,act_payment_amt,occupation,income,net_gr_income_ind,
 		ann_income_ind,no_of_emi_due],axis=1)
 
-	df['Amt Overdue']=npx.where(df['No of EMI Due'].apply(lambda x:int(x))<=1,'0',df['Amt Overdue'])
+	#df['Amt Overdue']=npx.where(df['No of EMI Due'].apply(lambda x:int(x))<=1,'0',df['Amt Overdue'])
 
 	df=df.rename({
 		'dob':'Date of Birth',
@@ -994,6 +994,17 @@ def generate_emi_dates(loan_type,loan_tenure,first_emi):
 			d+=relativedelta(months=+1)			
 			d_1.append(d)
 	d_1=[datetime.datetime.strptime(str(i).split(" ")[0],"%Y-%m-%d") for i in d_1]
+	
+	return d_1
+
+
+
+def generate_emi_dates_due(loan_type,loan_tenure,first_emi,start_date,end_date):
+	start_date=datetime.datetime.strptime(start_date,"%Y-%m-%d")
+	if(type(end_date)!=datetime.datetime):
+		end_date=datetime.datetime.strptime(end_date,"%Y-%m-%d")
+	d_1=generate_emi_dates(loan_type,loan_tenure,first_emi)
+	d_1=[i for i in d_1 if i>=start_date and i<=end_date]
 	
 	return d_1
 

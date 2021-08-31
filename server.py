@@ -258,6 +258,7 @@ def res():
 		data.columns=col_names
 		data=data.dropna(axis=0,subset=['transactionid'])
 		data=data.fillna("N/A")
+		print(data)
 		#d1=master_repay_helper(data)
 		#print(d1)
 		#print("=================")
@@ -1356,12 +1357,55 @@ def view_report_st():
 			sum_all+=int(i[0])
 		
 		msg["data"]=sum_all
-
+		cursor.close()
 	except Exception as e:
 		msg['error']=str(e)
 
 	return jsonify({"msg":msg})
 
+
+@app.route("/view_due",methods=["POST"])
+@cross_origin(supports_credentials=True)
+def view_due():
+	msg={}
+	req=request.data
+	req=json.loads(req)
+	comp=req.get("comp",None)
+	st_date=req.get("stDate",None)
+	end_date=req.get("endDate",None)
+	try:
+		tot_sum=0
+		cursor=mysql.connection.cursor()
+		query="SELECT repayment_type,loan_tenure,first_inst_date,emi_amt FROM upload_file WHERE comp_name=%s"
+		cursor.execute(query,(comp,))
+		data_all=cursor.fetchall()
+
+		if(st_date is None and end_date is None):
+			end_date=datetime.datetime.now()
+			for i in data_all:
+				emi_dates=generate_emi_dates_due(i[0],int(i[1]),i[2],"2021-01-01",datetime.datetime.now())
+				tot_sum+=len(emi_dates)*int(i[3])
+
+
+		elif(st_date is not None and end_date is not None):
+			for i in data_all:
+				emi_dates=generate_emi_dates_due(i[0],int(i[1]),i[2],st_date,end_date)
+				tot_sum+=len(emi_dates)*int(i[3])
+
+		elif(st_date is None and end_date is not None):
+			for i in data_all:
+				emi_dates=generate_emi_dates_due(i[0],int(i[1]),i[2],"2021-01-01",end_date)
+				tot_sum+=len(emi_dates)*int(i[3])
+
+		msg["data"]=tot_sum
+
+		cursor.close()
+			
+	except Exception as e:
+		msg['error']=str(e)
+
+	return jsonify({"msg":msg})
+	
 
 
 
