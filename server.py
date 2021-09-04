@@ -1170,6 +1170,7 @@ def repay_history():
 			data_all=cursor.fetchall()
 			all_history=generate_payment_report(data_all,emi_dates,emi_amt)
 			all_history=[all_history[i] for i in all_history.keys()]
+			print(all_history)
 			msg["data"]=all_history
 			#cursor.execute(query,(lid,))
 			#data_all=cursor.fetchall()
@@ -1364,6 +1365,7 @@ def view_report_st():
 	return jsonify({"msg":msg})
 
 
+
 @app.route("/view_due",methods=["POST"])
 @cross_origin(supports_credentials=True)
 def view_due():
@@ -1376,26 +1378,96 @@ def view_due():
 	try:
 		tot_sum=0
 		cursor=mysql.connection.cursor()
-		query="SELECT repayment_type,loan_tenure,first_inst_date,emi_amt FROM upload_file WHERE comp_name=%s"
-		cursor.execute(query,(comp,))
-		data_all=cursor.fetchall()
 
 		if(st_date is None and end_date is None):
 			end_date=datetime.datetime.now()
+			query="SELECT loan_tenure,emi_amt,repayment_type,first_inst_date,emi_amount_received,carry_f,emi_number,emi_date_flag,partner_loan_id,first_name,last_name,last_date_flag,comp_name,sanction_amount,transaction_id FROM upload_file WHERE comp_name=%s AND first_inst_date<=%s"
+			cursor.execute(query,(comp,end_date,))
+			fetch_data=cursor.fetchall()
+			if(len(fetch_data)<1):
+				msg["error"]="no data found"
+				return jsonify({"msg":msg})
+
+			for i in fetch_data:
+				loan_type=i[2]
+				loan_tenure=int(i[0])
+				first_emi_date=i[3]
+				emi_amt=i[1]
+				f_name=i[9]
+				l_name=i[10]
+				comp_name=i[12]
+				sanction_amount=i[13]
+				emi_amount_received=i[4]
+				
+				emi_dates=generate_emi_dates(loan_type,loan_tenure,first_emi_date)
+				query="SELECT payment_date,payment_amount,due,carry_f,remark FROM repay_tracker WHERE transaction_id=%s ORDER BY payment_date;"
+				cursor.execute(query,(i[14],))
+				data_all=cursor.fetchall()
+				all_history=generate_payment_report(data_all,emi_dates,emi_amt)
+				for i in all_history.keys():
+					if(i<=end_date):
+						tot_sum+=int(all_history[i][2])
+					else:
+						continue
+
+			'''
+			end_date=datetime.datetime.now()
+			#query="SELECT * FROM repay_tracker WHERE comp_name=%s and payment_date<=%s"
+			query="SELECT repay_tracker.payment_date,repay_tracker.due FROM repay_tracker LEFT JOIN upload_file ON repay_tracker.transaction_id=upload_file.transaction_id WHERE upload_file.comp_name=%s AND repay_tracker.payment_date<=%s"
+			cursor.execute(query,(comp,end_date,))
+			data_all=cursor.fetchall()
+			print(len(data_all))
 			for i in data_all:
-				emi_dates=generate_emi_dates_due(i[0],int(i[1]),i[2],"2021-01-01",datetime.datetime.now())
-				tot_sum+=len(emi_dates)*int(i[3])
+				tot_sum+=int(i[1])
+			'''
+
 
 
 		elif(st_date is not None and end_date is not None):
+			'''
+			st_date=datetime.datetime.strptime(st_date,"%Y-%m-%d")
+			end_date=datetime.datetime.strptime(end_date,"%Y-%m-%d")
+			query="SELECT repay_tracker.payment_date,repay_tracker.due FROM repay_tracker LEFT JOIN upload_file ON repay_tracker.transaction_id=upload_file.transaction_id WHERE upload_file.comp_name=%s AND (repay_tracker.payment_date>=%s AND repay_tracker.payment_date<=%s)"
+			cursor.execute(query,(comp,st_date,end_date,))
+			data_all=cursor.fetchall()
+			print(len(data_all))
 			for i in data_all:
-				emi_dates=generate_emi_dates_due(i[0],int(i[1]),i[2],st_date,end_date)
-				tot_sum+=len(emi_dates)*int(i[3])
+				tot_sum+=int(i[1])
+			'''
+			st_date=datetime.datetime.strptime(st_date,"%Y-%m-%d")
+			end_date=datetime.datetime.strptime(end_date,"%Y-%m-%d")
+			query="SELECT loan_tenure,emi_amt,repayment_type,first_inst_date,emi_amount_received,carry_f,emi_number,emi_date_flag,partner_loan_id,first_name,last_name,last_date_flag,comp_name,sanction_amount,transaction_id FROM upload_file WHERE comp_name=%s AND first_inst_date<=%s"
+			cursor.execute(query,(comp,end_date,))
+			fetch_data=cursor.fetchall()
+			if(len(fetch_data)<1):
+				msg["error"]="no data found"
+				return jsonify({"msg":msg})
+
+			for i in fetch_data:
+				loan_type=i[2]
+				loan_tenure=int(i[0])
+				first_emi_date=i[3]
+				emi_amt=i[1]
+				f_name=i[9]
+				l_name=i[10]
+				comp_name=i[12]
+				sanction_amount=i[13]
+				emi_amount_received=i[4]
+				
+				emi_dates=generate_emi_dates(loan_type,loan_tenure,first_emi_date)
+				query="SELECT payment_date,payment_amount,due,carry_f,remark FROM repay_tracker WHERE transaction_id=%s ORDER BY payment_date;"
+				cursor.execute(query,(i[14],))
+				data_all=cursor.fetchall()
+				all_history=generate_payment_report(data_all,emi_dates,emi_amt)
+				for j in all_history.keys():
+					if(j>=st_date and j<=end_date and all_history[j][6]=="ed"):
+						tot_sum+=int(all_history[j][2])
+					
 
 		elif(st_date is None and end_date is not None):
 			for i in data_all:
 				emi_dates=generate_emi_dates_due(i[0],int(i[1]),i[2],"2021-01-01",end_date)
-				tot_sum+=len(emi_dates)*int(i[3])
+				tot_sum+=len(emi_dates)*int(i[3])+int(i[4])
 
 		msg["data"]=tot_sum
 
@@ -1403,6 +1475,134 @@ def view_due():
 			
 	except Exception as e:
 		msg['error']=str(e)
+
+	return jsonify({"msg":msg})
+
+
+
+
+@app.route("/repayment_tracker",methods=["POST"])
+@cross_origin(supports_credentials=True)
+@login_required
+def repaypemt_tracker():
+	print("here")
+	msg={}
+	req=request.data
+	pageidx=request.args.get("idx")
+	req=json.loads(req)
+	lid=req.get("lid",None)
+	if(lid):
+		lid=lid.split(" ")
+	f_name=req.get("fname",None)
+	l_name=req.get("lname",None)
+	st_date=req.get("stDate",None)
+	end_date=req.get("endDate",None)
+	comp=req.get("comp",None)
+
+	if(st_date is not None and end_date is not None):
+		st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
+		en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
+		gap=en_d-st_d
+		if(gap.days<0):
+			msg["error"]="end date must be bigger"
+			return jsonify({"msg":msg})
+
+	try:
+		cursor=mysql.connection.cursor()
+		tracker_data=[]
+		if(st_date and end_date):
+
+			if(pageidx=="0"):
+				query="SELECT COUNT(*) FROM master_repay WHERE (comp_name=%s AND (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date));"
+				cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,))
+				count=cursor.fetchall()
+				msg["count"]=count[0][0]
+
+			if(pageidx=="-2"):
+				query="SELECT * FROM master_repay WHERE (comp_name=%s AND (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date));"
+				cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,))
+
+			else:	
+				perpage=20
+				startat=int(pageidx)*perpage
+				#query="SELECT DISTINCT transaction_id FROM master_repay WHERE emi_date BETWEEN %s AND %s;"
+				query="SELECT * FROM master_repay WHERE (comp_name=%s AND (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date)) LIMIT %s,%s;"
+				cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,startat,perpage,))
+	
+			data_all=cursor.fetchall()
+
+			if(len(data_all)<1):
+				msg["error"]="no data found based on this search"
+				return jsonify({"msg":msg})
+
+			#msg["data"]=all_history
+
+			
+		elif(lid):
+			if(pageidx=="0"):
+				cursor.execute("SELECT COUNT(*) FROM master_repay WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
+				count=cursor.fetchall()
+				msg["count"]=count[0][0]
+			if(pageidx=="-2"):
+				cursor.execute("SELECT COUNT * FROM master_repay WHERE (transaction_id IN %(tid)s AND comp_name IN %(comp)s)",{"tid":lid,"comp":comp})
+			else:
+				perpage=20
+				startat=int(pageidx)*perpage
+				cursor.execute("SELECT * FROM master_repay WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s) LIMIT %(st)s,%(end)s",{"tid":lid,"comp":comp,"st":startat,"end":perpage})
+			#query="SELECT * FROM master_repay WHERE transaction_id=%s"
+			#cursor.execute(query,(lid,))
+			data_all=cursor.fetchall()
+			if(len(data_all)<1):
+				msg["error"]="no data found based on this search"
+				return jsonify({"msg":msg})
+		
+
+		elif(f_name and l_name):
+			if(pageidx=="0"):
+				query="SELECT COUNT(*) FROM master_repay WHERE (first_name=%s AND last_name=%s AND comp_name=%s)"
+				cursor.execute(query,(f_name,l_name,comp,))
+				count=cursor.fetchall()
+				msg["count"]=count[0][0]
+			if(pageidx=="-2"):
+				query="SELECT * FROM master_repay WHERE (first_name=%s AND last_name=%s AND comp_name=%s)"
+				cursor.execute(query,(f_name,l_name,comp,))
+			else:
+				perpage=20
+				startat=int(pageidx)*perpage
+				query="SELECT * FROM master_repay WHERE (first_name=%s AND last_name=%s AND comp_name=%s) LIMIT %s,%s"
+				cursor.execute(query,(f_name,l_name,comp,startat,perpage,))
+
+			data_all=cursor.fetchall()
+			if(len(data_all)<1):
+				msg["error"]="no data found based on this search"
+				return jsonify({"msg":msg})
+		print(len(data_all))
+		for i in data_all:
+			loan_type=i[3]
+			loan_tenure=int(i[4])
+			first_emi_date=i[6]
+			emi_amt=i[5]
+			emi_dates=generate_emi_dates(loan_type,loan_tenure,first_emi_date)
+			query="SELECT payment_date,payment_amount,due,carry_f,remark FROM repay_tracker WHERE transaction_id=%s ORDER BY payment_date;"
+			cursor.execute(query,(i[0],))
+			fetch_all=cursor.fetchall()
+			all_history=generate_payment_report(fetch_all,emi_dates,emi_amt)
+			for hist in all_history.keys():
+				if(st_date is not None and end_date is not None):
+					if(datetime.datetime.strptime(all_history[hist][0],"%d-%m-%Y")>=st_d and datetime.datetime.strptime(all_history[hist][0],"%d-%m-%Y")<=en_d):
+						tracker_data.append([i[0],i[1],i[2],loan_type,emi_amt,all_history[hist][0],all_history[hist][1],all_history[hist][2],all_history[hist][3]])
+				else:
+					tracker_data.append([i[0],i[1],i[2],loan_type,emi_amt,all_history[hist][0],all_history[hist][1],all_history[hist][2],all_history[hist][3]])
+
+		columns=['TransactionId','First_Name','Last_Name','Loan_Type','EMI_Amount','Payment Date','Amount_Paid','Amount_Due','Carry_Forward']	
+
+		msg['clName']=columns
+		msg['data']=tracker_data
+
+		cursor.close()
+	except Exception as e:
+
+		msg["error"]=str(e)
 
 	return jsonify({"msg":msg})
 	

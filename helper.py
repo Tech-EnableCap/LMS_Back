@@ -494,7 +494,7 @@ def equifax_generator(data,end_date,due_list,received_amount,last_date,emi_due):
 		wt_principal,settle_amt,payment_frequency,act_payment_amt,occupation,income,net_gr_income_ind,
 		ann_income_ind,no_of_emi_due],axis=1)
 
-	#df['Amt Overdue']=npx.where(df['No of EMI Due'].apply(lambda x:int(x))<=1,'0',df['Amt Overdue'])
+	df['Amt Overdue']=npx.where(df['No of EMI Due'].apply(lambda x:int(x))<=1,'0',df['Amt Overdue'])
 
 	df=df.rename({
 		'dob':'Date of Birth',
@@ -1009,7 +1009,7 @@ def generate_emi_dates_due(loan_type,loan_tenure,first_emi,start_date,end_date):
 	return d_1
 
 
-
+'''
 def generate_payment_report(data_all,emi_dates,emi_amt):
 	all_history={}
 	due=0
@@ -1075,7 +1075,96 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 				carry_f=due
 				all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
 	return all_history
+'''
+def generate_payment_report(data_all,emi_dates,emi_amt):
+	all_history={}
+	due=0
+	carry_f=0
+	p=0
+	st=" "
+	if(len(data_all)>0):
+		paid_dates=[datetime.datetime.strptime(str(i[0]),"%Y-%m-%d") for i in data_all]
+		emi_dates_var=emi_dates.copy()
+		for i in emi_dates:
+			if i in paid_dates:
+				emi_dates.remove(i)
+		extracted_dates=emi_dates+paid_dates
+		all_dates=sorted(extracted_dates)
+		for i in all_dates:
+			if i not in paid_dates:
+				if(all_dates.index(i)==0):
+					payment_amount=0
+					due=int(emi_amt)
+					carry_f=int(emi_amt)
+					date_ff=date_convert(i)
+					all_history[i]=(date_ff,str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
+				else:
+					if(datetime.datetime.today()<=i):
+						vals=all_history[list(all_history.keys())[-1]]
+						is_paid=int(vals[1])
+						date_ff=date_convert(i)
+						carry_f=0
+						if(is_paid==0 or is_paid>int(emi_amt) or is_paid<int(emi_amt)):
+							payment_amount=0
+							due=int(emi_amt)+int(vals[-4])
+						else:
+							payment_amount=0
+							due=int(emi_amt)
+					else:
+						vals=all_history[list(all_history.keys())[-1]]
+						payment_amount=0
+						due=int(emi_amt)+int(vals[-4])
+						carry_f=due
+						date_ff=date_convert(i)
+					all_history[i]=(date_ff,str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
+			else:
+				for data in data_all:
+					if(datetime.datetime.strptime(str(data[0]),"%Y-%m-%d")==i):
+						due=data[2]
+						p+=data[1]
+						carry_f=data[3]
+						st=data[4]
+				if i in emi_dates_var:
+					date_ff=date_convert(i)
+					all_history[i]=(date_ff,str(p),str(due),str(carry_f),"not paid",st,"ed")
+				else:
+					date_ff=date_convert(i)
+					all_history[i]=(date_ff,str(p),str(due),str(carry_f),"not paid",st,"pd")
+			due=0
+			carry_f=0
+			p=0
+			st=" "
 
+	else:
+	    emi_dates=sorted(emi_dates)
+	    for i in range(len(emi_dates)):
+	        if(i==0):
+	            payment_amount=0
+	            due=int(emi_amt)
+	            if(datetime.datetime.today()<=emi_dates[i]):
+	                carry_f=0
+	            else:
+	                carry_f=int(emi_amt)
+	            all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
+	        else:
+	            if(datetime.datetime.today()<=emi_dates[i]):
+	                vals=all_history[list(all_history.keys())[-1]]
+	                is_paid=int(vals[1])
+	                date_ff=date_convert(emi_dates[i])
+	                carry_f=0
+	                if(is_paid==0 or is_paid>int(emi_amt) or is_paid<int(emi_amt)):
+	                    payment_amount=0
+	                    due=int(emi_amt)+int(vals[-4])
+	                else:
+	                    payment_amount=0
+	                    due=int(emi_amt)
+	            else:
+	                vals=all_history[list(all_history.keys())[-1]]
+	                payment_amount=0
+	                due=int(emi_amt)+int(vals[-4])
+	                carry_f=due
+	            all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
+	return all_history
 
 def date_convert(date):
 	if(type(date)==datetime.datetime):
