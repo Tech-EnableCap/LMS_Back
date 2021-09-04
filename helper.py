@@ -1187,6 +1187,14 @@ def date_convert_efx(date):
 	return out_date
 
 
+def repay_tracker_date(date):
+	date_sp=date.split("-")
+	if(len(date_sp[0])>2):
+		return datetime.datetime.strptime(date,"%Y-%m-%d")
+	else:
+		fin_date=date_sp[2]+"-"+date_sp[1]+"-"+date_sp[0]
+		return datetime.datetime.strptime(fin_date,"%Y-%m-%d")
+
 def closed_date_efx(date,end_date):
 	if(datetime.datetime.strptime(date,"%Y-%m-%d")<=datetime.datetime.strptime(end_date,"%Y-%m-%d")):
 		date_ff=date.split("-")

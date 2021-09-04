@@ -1404,9 +1404,9 @@ def view_due():
 				cursor.execute(query,(i[14],))
 				data_all=cursor.fetchall()
 				all_history=generate_payment_report(data_all,emi_dates,emi_amt)
-				for i in all_history.keys():
-					if(i<=end_date):
-						tot_sum+=int(all_history[i][2])
+				for j in all_history.keys():
+					if(j<=end_date):
+						tot_sum+=int(all_history[j][2])
 					else:
 						continue
 
@@ -1460,8 +1460,10 @@ def view_due():
 				data_all=cursor.fetchall()
 				all_history=generate_payment_report(data_all,emi_dates,emi_amt)
 				for j in all_history.keys():
-					if(j>=st_date and j<=end_date and all_history[j][6]=="ed"):
+					if(j>=st_date and j<=end_date):
 						tot_sum+=int(all_history[j][2])
+					else:
+						continue
 					
 
 		elif(st_date is None and end_date is not None):
@@ -1576,7 +1578,7 @@ def repaypemt_tracker():
 			if(len(data_all)<1):
 				msg["error"]="no data found based on this search"
 				return jsonify({"msg":msg})
-		print(len(data_all))
+		
 		for i in data_all:
 			loan_type=i[3]
 			loan_tenure=int(i[4])
@@ -1589,7 +1591,8 @@ def repaypemt_tracker():
 			all_history=generate_payment_report(fetch_all,emi_dates,emi_amt)
 			for hist in all_history.keys():
 				if(st_date is not None and end_date is not None):
-					if(datetime.datetime.strptime(all_history[hist][0],"%d-%m-%Y")>=st_d and datetime.datetime.strptime(all_history[hist][0],"%d-%m-%Y")<=en_d):
+
+					if(repay_tracker_date(all_history[hist][0])>=st_d and repay_tracker_date(all_history[hist][0])<=en_d):
 						tracker_data.append([i[0],i[1],i[2],loan_type,emi_amt,all_history[hist][0],all_history[hist][1],all_history[hist][2],all_history[hist][3]])
 				else:
 					tracker_data.append([i[0],i[1],i[2],loan_type,emi_amt,all_history[hist][0],all_history[hist][1],all_history[hist][2],all_history[hist][3]])
