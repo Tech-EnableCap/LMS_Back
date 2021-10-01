@@ -18,6 +18,9 @@ from flask_cors import CORS, cross_origin
 from functools import wraps
 from flask_mysqldb import MySQL
 import time
+from threading_p import Workers
+from queue import Queue
+from time import time
 
 
 app=Flask(__name__)
@@ -1223,6 +1226,7 @@ class CronJob(object):
 @app.route("/view_report",methods=["POST"])
 @cross_origin(supports_credentials=True)
 def view_report_status():
+	#print("here kk");
 	msg={}
 	req=request.data
 	pageidx=request.args.get("idx")
@@ -1271,6 +1275,7 @@ def view_report_status():
 			if(l_status):
 				#query="SELECT * FROM chk_status WHERE (comp_name=%s AND status_up=%s);"
 				if("all" in l_status or "ALL" in l_status or "All" in l_status):
+					print("damn")
 					cursor.execute("SELECT * FROM chk_status WHERE comp_name=%(comp)s",{"comp":comp})
 				else:
 					cursor.execute("SELECT * FROM chk_status WHERE (comp_name=%(comp)s AND status_up IN %(l_st)s)",{"comp":comp,"l_st":l_status})
@@ -1294,6 +1299,7 @@ def view_report_status():
 					cursor.execute("SELECT * FROM chk_status WHERE (comp_name=%(comp)s AND status_up IN %(l_st)s) LIMIT %(st)s,%(end)s",{"comp":comp,"l_st":l_status,"st":startat,"end":perpage})
 
 		data_all=cursor.fetchall()
+		print(data_all)
 		if(len(data_all)<1):
 			msg['error']='no data found'
 			return jsonify({"msg":msg})
@@ -1487,7 +1493,6 @@ def view_due():
 @cross_origin(supports_credentials=True)
 @login_required
 def repaypemt_tracker():
-	print("here")
 	msg={}
 	req=request.data
 	pageidx=request.args.get("idx")
@@ -1499,6 +1504,7 @@ def repaypemt_tracker():
 	l_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
+	search_cat=req.get("repay_type",None)
 	comp=req.get("comp",None)
 
 	if(st_date is not None and end_date is not None):
@@ -1508,6 +1514,10 @@ def repaypemt_tracker():
 		if(gap.days<0):
 			msg["error"]="end date must be bigger"
 			return jsonify({"msg":msg})
+	elif(st_date is None or end_date is None):
+		if(search_cat=="analysis"):
+			msg["error"]="You have to specify both start date and date for analysis"
+			return jsonify({"msg":msg})
 
 	try:
 		cursor=mysql.connection.cursor()
@@ -1515,21 +1525,38 @@ def repaypemt_tracker():
 		if(st_date and end_date):
 
 			if(pageidx=="0"):
-				query="SELECT COUNT(*) FROM master_repay WHERE (comp_name=%s AND (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date));"
-				cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,))
-				count=cursor.fetchall()
-				msg["count"]=count[0][0]
+				if(search_cat=="repay_tracker"):
+					query="SELECT COUNT(*) FROM master_repay WHERE (comp_name=%s AND (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date));"
+					cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,))
+					count=cursor.fetchall()
+					print(count)
+					msg["count"]=count[0][0]
+				else:
+					query="SELECT COUNT(*) FROM master_repay WHERE (comp_name=%s AND (end_date>=%s AND st_date<=%s));"
+					cursor.execute(query,(comp,st_date,end_date,))
+					count=cursor.fetchall()
+					print(count)
+
 
 			if(pageidx=="-2"):
-				query="SELECT * FROM master_repay WHERE (comp_name=%s AND (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date));"
-				cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,))
+				if(search_cat=="repay_tracker"):
+					query="SELECT * FROM master_repay WHERE (comp_name=%s AND (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date));"
+					cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,))
+				else:
+					query="SELECT * FROM master_repay WHERE (comp_name=%s AND (end_date>=%s AND st_date<=%s));"
+					cursor.execute(query,(comp,st_date,end_date,))
 
-			else:	
-				perpage=20
-				startat=int(pageidx)*perpage
-				#query="SELECT DISTINCT transaction_id FROM master_repay WHERE emi_date BETWEEN %s AND %s;"
-				query="SELECT * FROM master_repay WHERE (comp_name=%s AND (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date)) LIMIT %s,%s;"
-				cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,startat,perpage,))
+			else:
+				if(search_cat=="repay_tracker"):	
+					perpage=20
+					startat=int(pageidx)*perpage
+					#query="SELECT DISTINCT transaction_id FROM master_repay WHERE emi_date BETWEEN %s AND %s;"
+				
+					query="SELECT * FROM master_repay WHERE (comp_name=%s AND (%s<=st_date AND %s>=st_date OR %s>=end_date AND %s<=end_date OR %s<=st_date AND %s>=end_date)) LIMIT %s,%s;"
+					cursor.execute(query,(comp,st_date,end_date,end_date,st_date,st_date,end_date,startat,perpage,))
+				else:
+					query="SELECT * FROM master_repay WHERE (comp_name=%s AND (end_date>=%s AND st_date<=%s));"
+					cursor.execute(query,(comp,st_date,end_date,))
 	
 			data_all=cursor.fetchall()
 
@@ -1546,7 +1573,7 @@ def repaypemt_tracker():
 				count=cursor.fetchall()
 				msg["count"]=count[0][0]
 			if(pageidx=="-2"):
-				cursor.execute("SELECT COUNT * FROM master_repay WHERE (transaction_id IN %(tid)s AND comp_name IN %(comp)s)",{"tid":lid,"comp":comp})
+				cursor.execute("SELECT * FROM master_repay WHERE (transaction_id IN %(tid)s AND comp_name=%(comp)s)",{"tid":lid,"comp":comp})
 			else:
 				perpage=20
 				startat=int(pageidx)*perpage
@@ -1554,6 +1581,7 @@ def repaypemt_tracker():
 			#query="SELECT * FROM master_repay WHERE transaction_id=%s"
 			#cursor.execute(query,(lid,))
 			data_all=cursor.fetchall()
+			print(data_all)
 			if(len(data_all)<1):
 				msg["error"]="no data found based on this search"
 				return jsonify({"msg":msg})
@@ -1579,6 +1607,23 @@ def repaypemt_tracker():
 				msg["error"]="no data found based on this search"
 				return jsonify({"msg":msg})
 		
+		#total=0
+		'''
+		queue=Queue()
+		for _ in range(8):
+			worker=Workers(queue,tracker_data,total,st_date,end_date,st_d,en_d)
+			worker.daemon=True
+			worker.start()
+
+		for i in data_all:
+			query="SELECT payment_date,payment_amount,due,carry_f,remark FROM repay_tracker WHERE transaction_id=%s ORDER BY payment_date;"
+			cursor.execute(query,(i[0],))
+			fetch_all=cursor.fetchall()
+			queue.put((i,fetch_all))
+		queue.join()
+
+		'''
+		tracker_dict={}
 		for i in data_all:
 			loan_type=i[3]
 			loan_tenure=int(i[4])
@@ -1591,16 +1636,41 @@ def repaypemt_tracker():
 			all_history=generate_payment_report(fetch_all,emi_dates,emi_amt)
 			for hist in all_history.keys():
 				if(st_date is not None and end_date is not None):
+					'''
+					if (st_d==en_d):
+						if(repay_tracker_date(all_history[hist][0])==st_d):
+							tracker_data.append([i[0],i[1],i[2],loan_type,emi_amt,all_history[hist][0],all_history[hist][1],all_history[hist][2],all_history[hist][3]])
+					'''
 
 					if(repay_tracker_date(all_history[hist][0])>=st_d and repay_tracker_date(all_history[hist][0])<=en_d):
-						tracker_data.append([i[0],i[1],i[2],loan_type,emi_amt,all_history[hist][0],all_history[hist][1],all_history[hist][2],all_history[hist][3]])
+						if(search_cat=="repay_tracker"):
+							tracker_data.append([i[0],i[1],i[2],loan_type,emi_amt,all_history[hist][0],all_history[hist][1],all_history[hist][2],all_history[hist][3],str(int(all_history[hist][2])-int(emi_amt))])
+							#total+=int(all_history[hist][2])
+						else:
+							tracker_dict[repay_tracker_date(all_history[hist][0])]=tracker_dict.get(repay_tracker_date(all_history[hist][0]),0)+int(all_history[hist][2])
+							#total+=int(all_history[hist][2])
+							#print(total)
+							#total=0
 				else:
-					tracker_data.append([i[0],i[1],i[2],loan_type,emi_amt,all_history[hist][0],all_history[hist][1],all_history[hist][2],all_history[hist][3]])
+					tracker_data.append([i[0],i[1],i[2],loan_type,emi_amt,all_history[hist][0],all_history[hist][1],all_history[hist][2],all_history[hist][3],str(int(all_history[hist][2])-int(emi_amt))])
+			
 
-		columns=['TransactionId','First_Name','Last_Name','Loan_Type','EMI_Amount','Payment Date','Amount_Paid','Amount_Due','Carry_Forward']	
 
-		msg['clName']=columns
-		msg['data']=tracker_data
+		columns=['TransactionId','First_Name','Last_Name','Loan_Type','EMI_Amount','Payment Date','Amount_Paid','Amount_Due','Amount_to_be_carry_forward','Carry_Forward']
+
+		if(search_cat=="repay_tracker"):	
+			msg['clName']=columns
+			msg['data']=tracker_data
+		elif(search_cat=="analysis"):
+			msg['clName']=['date','due']
+			msg['data']=[[str(key).split(" ")[0],val] for key,val in sorted(tracker_dict.items())]
+			msg["count"]=len(tracker_dict)
+		else:
+			msg['clName']=columns
+			msg['data']=tracker_data
+		#print(total)
+		#print(tracker_dict)
+		#print(msg)
 
 		cursor.close()
 	except Exception as e:

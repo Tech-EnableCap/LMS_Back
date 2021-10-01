@@ -45,7 +45,7 @@ def update_status_cron():
 				query="SELECT payment_date,payment_amount,due,carry_f,remark FROM repay_tracker WHERE transaction_id=%s ORDER BY payment_date;"
 				cursor.execute(query,(ti_val[0],))
 				data_all=cursor.fetchall()
-				all_history=generate_payment_report(data_all,emi_dates,emi_amt)
+				all_history=generate_payment_report_V1(data_all,emi_dates,emi_amt)
 
 
 				due=0

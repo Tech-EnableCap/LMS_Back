@@ -991,7 +991,10 @@ def generate_emi_dates(loan_type,loan_tenure,first_emi):
 		d=first_emi
 		d_1.append(d)
 		for _ in range(loan_tenure-1):
-			d+=relativedelta(months=+1)			
+			if(str(d).split("-")[2]=="31"):
+				d+=datetime.timedelta(31)
+			else:
+				d+=relativedelta(months=+1)			
 			d_1.append(d)
 	d_1=[datetime.datetime.strptime(str(i).split(" ")[0],"%Y-%m-%d") for i in d_1]
 	
@@ -1009,8 +1012,7 @@ def generate_emi_dates_due(loan_type,loan_tenure,first_emi,start_date,end_date):
 	return d_1
 
 
-'''
-def generate_payment_report(data_all,emi_dates,emi_amt):
+def generate_payment_report_V1(data_all,emi_dates,emi_amt):
 	all_history={}
 	due=0
 	carry_f=0
@@ -1075,7 +1077,7 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 				carry_f=due
 				all_history[emi_dates[i]]=(str(emi_dates[i]).split(" ")[0],str(payment_amount),str(due),str(carry_f),"not paid"," ","ed")
 	return all_history
-'''
+
 def generate_payment_report(data_all,emi_dates,emi_amt):
 	all_history={}
 	due=0
@@ -1104,12 +1106,12 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 						is_paid=int(vals[1])
 						date_ff=date_convert(i)
 						carry_f=0
-						if(is_paid==0 or is_paid>int(emi_amt) or is_paid<int(emi_amt)):
-							payment_amount=0
-							due=int(emi_amt)+int(vals[-4])
-						else:
-							payment_amount=0
-							due=int(emi_amt)
+						#if(is_paid==0 or is_paid>int(emi_amt) or is_paid<int(emi_amt)):
+						payment_amount=0
+						due=int(emi_amt)+int(vals[-4])
+						#else:
+							#payment_amount=0
+							#due=int(emi_amt)
 					else:
 						vals=all_history[list(all_history.keys())[-1]]
 						payment_amount=0
@@ -1152,12 +1154,12 @@ def generate_payment_report(data_all,emi_dates,emi_amt):
 	                is_paid=int(vals[1])
 	                date_ff=date_convert(emi_dates[i])
 	                carry_f=0
-	                if(is_paid==0 or is_paid>int(emi_amt) or is_paid<int(emi_amt)):
-	                    payment_amount=0
-	                    due=int(emi_amt)+int(vals[-4])
-	                else:
-	                    payment_amount=0
-	                    due=int(emi_amt)
+	                #if(is_paid==0 or is_paid>int(emi_amt) or is_paid<int(emi_amt)):
+	                payment_amount=0
+	                due=int(emi_amt)+int(vals[-4])
+	                #else:
+	                    #payment_amount=0
+	                    #due=int(emi_amt)
 	            else:
 	                vals=all_history[list(all_history.keys())[-1]]
 	                payment_amount=0
