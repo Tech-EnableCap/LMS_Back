@@ -21,6 +21,8 @@ import time
 from threading_p import Workers
 from queue import Queue
 from time import time
+import boto3
+import json
 
 
 app=Flask(__name__)
@@ -28,16 +30,7 @@ CORS(app)
 
 
 
-app.config['SECRET_KEY']=
-app.config['MYSQL_HOST']=
-app.config['MYSQL_USER']=
-app.config['MYSQL_PASSWORD']=
-app.config['MYSQL_DB']=
-app.config['MYSQL_DATABASE_PORT']=
 
-mysql=MySQL(app)
-
-#app.register_blueprint(routes)
 
 
 def login_required(f):
@@ -60,6 +53,21 @@ def login_required(f):
 		return f(*args,**kwargs)
 	return check
 
+def update_log(eid,job_type):
+	for file in my_bucket.objects.all():
+		file_name=file.key
+		if(file_name=="logger.json"):
+			data=json.load(file.get()["Body"])
+			date=str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M")).split(" ")[0]
+			time=str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M")).split(" ")[1]
+			if (date not in data["log"][job_type]):
+				data["log"][job_type][date]=[]
+			data["log"][job_type][date].append([eid,time])
+			print(data)
+			s3object=s3.Object(s3_bucket_name,file_name)
+			s3object.put(Body=(bytes(json.dumps(data).encode('UTF-8'))))
+
+
 @app.route("/login",methods=["POST"])
 @cross_origin(supports_credentials=True)
 def login():
@@ -78,6 +86,7 @@ def login():
 			return jsonify({"msg":msg})
 		token=jwt.encode({'user':uname,'exp':datetime.datetime.utcnow()+datetime.timedelta(minutes=1440)},app.config['SECRET_KEY'],algorithm="HS256")
 		msg["token"]=token
+		update_log(uname,"login")
 		cursor.close()
 	except Exception as e:
 		msg["error"]=str(e)
@@ -95,6 +104,7 @@ def res():
 	d=request.data
 	d=json.loads(d)
 	f_type=list(d.keys())[0]
+	email=d["email"]
 	if(f_type=='efx'):
 		d=d[f_type]
 		d=d.split(';')[1]
@@ -198,6 +208,7 @@ def res():
 			mysql.connection.commit()
 			msg["success"]="data added"
 			cursor.close()
+			update_log(email,"upload_reco")
 		except Exception as e:
 			msg["error"]=str(e)
 			print(msg)
@@ -278,6 +289,8 @@ def res():
 			mysql.connection.commit()
 			cursor.close()
 			msg["msg"]="Success"
+			cursor.close()
+			update_log(email,"upload")
 		except Exception as e:
 			msg["error"]=str(e)
 			#cursor.close()
@@ -307,6 +320,7 @@ def exp():
 	end_date=req.get("endDate",None)
 	typ=req.get("cat","loan_app_date")
 	comp=req.get("comp",None)
+	email=req.get("email",None)
 	if(st_date is not None and end_date is not None):
 		st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
 		en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
@@ -375,6 +389,10 @@ def exp():
 		cl_name=list(final_data.columns)
 		msg["clName"]=cl_name
 		msg["data"]=body
+		if(pageidx=="0"):
+			update_log(email,"disbursal_mis")
+		elif(pageidx=="-2"):
+			update_log(email,"download_dmis")
 		cursor.close()
 
 	except Exception as e:
@@ -399,6 +417,7 @@ def view_up():
 	last_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
+	email=req.get("email",None)
 	typ=req.get("cat","loan_app_date")
 	comp=req.get("comp",None)
 	if(st_date is not None and end_date is not None):
@@ -460,6 +479,10 @@ def view_up():
 		cl_name=list(final_data.columns)
 		msg["clName"]=cl_name
 		msg["data"]=body
+		if(pageidx=="0"):
+			update_log(email,"view_upload")
+		elif(pageidx=="-2"):
+			update_log(email,"download_upload")
 		cursor.close()
 	except Exception as e:
 		msg['error']=str(e)
@@ -484,6 +507,7 @@ def generate_efx_report():
 	last_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
+	email=req.get("email",None)
 	comp=req.get("comp",None)
 	typ=req.get("cat","loan_app_date")
 	r_status=req.get("status","ongoing")
@@ -618,8 +642,10 @@ def generate_efx_report():
 		cl_name=list(data.columns)
 		msg["clName"]=cl_name
 		msg["data"]=body
-
-
+		if(pageidx=="0"):
+			update_log(email,"eqfx")
+		elif(pageidx=="-2"):
+			update_log(email,"download_eqfx")
 		cursor.close()
 		
 	except Exception as e:
@@ -702,6 +728,7 @@ def expt():
 	last_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
+	email=req.get("email",None)
 	typ=req.get("cat","loan_app_date")
 	comp=req.get("comp",None)
 	if(st_date is not None and end_date is not None):
@@ -759,7 +786,10 @@ def expt():
 		cl_name=list(final_data.columns)
 		msg["clName"]=cl_name
 		msg["data"]=body
-	
+		if(pageidx=="0"):
+			update_log(email,"bank_upload")
+		elif(pageidx=="-2"):
+			update_log(email,"download_bank_up")
 		cursor.close()
 
 	except Exception as e:
@@ -775,6 +805,8 @@ def analysis():
 	msg={}
 	risk={}
 	req=request.data
+	req=json.loads(req)
+	email=req.get("email",None)
 	#else:
 		#try:
 			#cursor=mysql.connection.cursor()
@@ -801,25 +833,8 @@ def analysis():
 		cols_eq="SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='candidate_equifax';"
 		cursor.execute(cols_eq,())
 		columns_eq=cursor.fetchall()
-
-		if(req):
-			req=json.loads(req)
-			st_date=req.get("stDate",None)
-			end_date=req.get("endDate",None)
-			typ=req.get("cat","loan_app_date")
-			if(st_date is not None and end_date is not None):
-				st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
-				en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
-				gap=en_d-st_d
-				if(gap.days<0):
-					msg["error"]="end date must be bigger"
-					return jsonify({"msg":msg})
-
-			query="SELECT * FROM upload_file WHERE "+typ+" BETWEEN %s AND %s;"
-			cursor.execute(query,(st_date,end_date,))
-		else:
-			query="SELECT * FROM upload_file;"
-			cursor.execute(query,())
+		query="SELECT * FROM upload_file;"
+		cursor.execute(query,())
 
 		data_all=cursor.fetchall()
 
@@ -850,6 +865,10 @@ def analysis():
 		risk["vloans"]=volume_of_loans
 
 		msg["risk"]=risk
+
+		print(msg)
+
+		update_log(email,"view_analysis")
 
 		#msg["risk"]["nloans"]=number_of_loans
 		#msg["risk"]["vloans"]=volume_of_loans
@@ -888,6 +907,7 @@ def search_repay_data():
 	l_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
+	email=req.get("email",None)
 	comp=req.get("comp",None)
 
 	if(st_date is not None and end_date is not None):
@@ -999,6 +1019,11 @@ def search_repay_data():
 			msg["clName"]=cl_name
 			msg["data"]=body
 
+		if(pageidx=="0"):
+			update_log(email,"master_repay_search")
+		elif(pageidx=="-2"):
+			update_log(email,"download_mr")
+
 		cursor.close()
 	except Exception as e:
 
@@ -1018,6 +1043,7 @@ def add_repay_tracker():
 	p_date=req.get("date",None)
 	amt=req.get("pmt",None)
 	remark=req.get("rem",None)
+	email=req.get("email",None);
 	if(lid is None or p_date is None or amt is None):
 		msg["error"]="no valid data"
 	else:
@@ -1050,6 +1076,7 @@ def add_repay_tracker():
 			mysql.connection.commit()
 
 			msg["success"]="data added"
+			update_log(email,"payment")
 			cursor.close()
 		except Exception as e:
 			msg["error"]=str(e)
@@ -1110,6 +1137,7 @@ def prf():
 	req=json.loads(req)
 	lid=req.get("lid",None)
 	date=req.get("date",None)
+	email=req.get("email",None);
 	if(lid and date):
 		try:
 			cursor=mysql.connection.cursor()
@@ -1135,6 +1163,7 @@ def prf():
 			msg["out"]=outstanding
 			msg["due"]=due
 			msg["status"]=data_status[0]
+			update_log(email,"rt_details")
 			cursor.close()
 		except Exception as e:
 			msg["error"]=str(e)
@@ -1233,6 +1262,7 @@ def view_report_status():
 		lid=lid.split(" ")
 	first_name=req.get("fname",None)
 	last_name=req.get("lname",None)
+	email=req.get("email",None)
 	comp=req.get("comp",None)
 	l_status=req.get("loan_status",None)
 	#if(l_status):
@@ -1312,6 +1342,10 @@ def view_report_status():
 		cl_name=list(data.columns)
 		msg["clName"]=cl_name
 		msg["data"]=body
+		if(pageidx=="0"):
+			update_log(email,"loan_report_search")
+		elif(pageidx=="-2"):
+			update_log(email,"download_lp")
 		cursor.close()
 		
 	except Exception as e:
@@ -1361,6 +1395,7 @@ def view_report_st():
 			sum_all+=int(i[0])
 		
 		msg["data"]=sum_all
+		update_log(email,"view_os")
 		cursor.close()
 	except Exception as e:
 		msg['error']=str(e)
@@ -1501,6 +1536,7 @@ def repaypemt_tracker():
 	l_name=req.get("lname",None)
 	st_date=req.get("stDate",None)
 	end_date=req.get("endDate",None)
+	email=req.get("email",None)
 	search_cat=req.get("repay_type",None)
 	comp=req.get("comp",None)
 
@@ -1662,12 +1698,21 @@ def repaypemt_tracker():
 			msg['clName']=['Date','Due','Emi Amount']
 			msg['data']=[[str(key).split(" ")[0],val,emi_all[key]] for key,val in sorted(tracker_dict.items())]
 			msg["count"]=len(tracker_dict)
+			if(pageidx=="0"):
+				update_log(email,"dbd_due_search")
+			elif(pageidx=="-2"):
+				update_log(email,"download_dbd_due")
 		else:
 			msg['clName']=columns
 			msg['data']=tracker_data
 		#print(total)
 		#print(tracker_dict)
 		#print(msg)
+		if(search_cat is None or search_cat!="analysis"):
+			if(pageidx=="0"):
+				update_log(email,"rt_search")
+			elif(pageidx=="-2"):
+				update_log(email,"download_rt")
 
 		cursor.close()
 	except Exception as e:
@@ -1677,10 +1722,13 @@ def repaypemt_tracker():
 	return jsonify({"msg":msg})
 
 
-@app.route("/cronjob",methods=["GET"])
+@app.route("/cronjob",methods=["POST"])
 @cross_origin(supports_credentials=True)
 def cronJob():
 	msg={}
+	req=request.data
+	req=json.loads(req)
+	email=req.get("email",None)
 	date=datetime.datetime.now()
 	check_time=3
 	all_status=[]
@@ -1929,10 +1977,74 @@ def cronJob():
 		mysql.connection.commit()
 		cursor.close()
 		msg["data"]="Succesfully updated loan status"
+		update_log(email,"cron")
 
 	except Exception as e:
 		msg["error"]=str(e)
 		print(msg)
+	return jsonify({"msg":msg})
+
+
+@app.route("/user_log",methods=["POST"])
+@cross_origin(supports_credentials=True)
+def UserLog():
+	msg={}
+	req=request.data
+	req=json.loads(req)
+	time=req.get("time",None)
+	st_date=req.get("stDate",None)
+	end_date=req.get("endDate",None)
+	email=req.get("lid",None)
+	job=req.get("job",None)
+	out=[]
+	try:
+		if(email):
+			for file in my_bucket.objects.all():
+				file_name=file.key
+				if(file_name=="logger.json"):
+					data=json.load(file.get()["Body"])
+					for i in data["log"][job].keys():
+						if(datetime.datetime.strptime(st_date,"%Y-%m-%d")<=datetime.datetime.strptime(i,"%Y-%m-%d") and datetime.datetime.strptime(end_date,"%Y-%m-%d")>=datetime.datetime.strptime(i,"%Y-%m-%d")):
+							for user in data["log"][job][i]:
+								if(user[0]==email):
+									user.extend([i,job])
+									out.append(user)
+			if(len(out)>0):
+				msg['clName']=["Email","Time","Date","Job Des"]
+				msg["data"]=out[::-1]
+				msg["count"]=len(out)
+			else:
+				msg["error"]="No data found"
+
+		elif(st_date is not None and end_date is not None):
+				st_d=datetime.datetime.strptime(st_date,"%Y-%m-%d")
+				en_d=datetime.datetime.strptime(end_date,"%Y-%m-%d")
+				gap=en_d-st_d
+				if(gap.days<0):
+					msg["error"]="end date must be bigger"
+					return jsonify({"msg":msg})
+
+				for file in my_bucket.objects.all():
+					file_name=file.key
+					if(file_name=="logger.json"):
+						data=json.load(file.get()["Body"])
+						for i in data["log"][job].keys():
+							if(datetime.datetime.strptime(st_date,"%Y-%m-%d")<=datetime.datetime.strptime(i,"%Y-%m-%d") and datetime.datetime.strptime(end_date,"%Y-%m-%d")>=datetime.datetime.strptime(i,"%Y-%m-%d")):
+								for user in data["log"][job][i]:
+									print(user)
+									user.extend([i,job])
+									out.append(user)
+				if(len(out)>0):
+					msg['clName']=["Email","Time","Date","Job Description"]
+					msg["data"]=out[::-1]
+					msg["count"]=len(out)
+				else:
+					msg["error"]="No data found"
+
+
+	except Exception as e:
+		msg["error"]=str(e)
+
 	return jsonify({"msg":msg})
 
 
